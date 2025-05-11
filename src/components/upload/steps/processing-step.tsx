@@ -221,10 +221,10 @@ export default function ProcessingStep() {
         <span className="text-sm text-muted-foreground">{Math.round(overallProgress)}% Complete</span>
       </div>
       
-      <div className="p-6">
-        <div className="grid md:grid-cols-2 gap-8">
+      <div className="p-4 sm:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           {/* Left column - status and steps */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="font-medium">Overall Progress</span>
@@ -237,9 +237,9 @@ export default function ProcessingStep() {
               />
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               <h4 className="font-medium text-sm">Processing Steps</h4>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {PROCESSING_STEPS.map((step, index) => renderPublishingStep(step, index))}
               </div>
             </div>
@@ -247,41 +247,24 @@ export default function ProcessingStep() {
           
           {/* Right column - video info and preview */}
           <div className="space-y-4">
-            <div className="aspect-video bg-black/90 rounded-md overflow-hidden border relative">
+            <div className="aspect-video bg-black/90 rounded-md overflow-hidden border relative hidden sm:block">
               {videoDetails.selectedThumbnail ? (
                 <img 
                   src={videoDetails.selectedThumbnail} 
                   alt="Video thumbnail" 
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-muted-foreground">No thumbnail available</p>
+                  <p className="text-muted-foreground">Processing thumbnail...</p>
                 </div>
               )}
-              
-              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-        <div className="relative">
-                  <motion.div 
-                    className="h-16 w-16 rounded-full border-4 border-white opacity-80"
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  />
-                  <motion.div 
-                    className="absolute inset-0 flex items-center justify-center"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  >
-                    <Loader2 className="h-10 w-10 text-white opacity-90" />
-                  </motion.div>
-                </div>
-              </div>
             </div>
             
-            <div className="border rounded-md p-4 bg-muted/30 space-y-3">
+            <div className="border rounded-md p-3 sm:p-4 bg-muted/30 space-y-2 sm:space-y-3">
               <div>
                 <h4 className="font-medium mb-1">Video Information</h4>
-                <p className="text-sm text-muted-foreground">{videoDetails.title}</p>
+                <p className="text-sm text-muted-foreground line-clamp-1">{videoDetails.title}</p>
               </div>
               
               <div className="grid grid-cols-2 gap-2 text-sm">
@@ -304,24 +287,24 @@ export default function ProcessingStep() {
               </div>
               
               <div className="pt-1 text-sm">
-                <p className="text-muted-foreground">Your video is currently being processed and will be available shortly. This typically takes a few minutes depending on the video length and quality.</p>
+                <p className="text-muted-foreground text-xs sm:text-sm">Your video is currently being processed and will be available shortly. This typically takes a few minutes depending on the video length and quality.</p>
               </div>
             </div>
           </div>
         </div>
       </div>
       
-      <div className="bg-muted/30 p-4 flex justify-between items-center border-t text-sm">
-        <p className="text-muted-foreground">Please don't close this page. We'll notify you when processing is complete.</p>
-        <p className="text-primary font-medium">
+      <div className="bg-muted/30 p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-center border-t text-sm gap-2">
+        <p className="text-muted-foreground text-xs sm:text-sm text-center sm:text-left">Please don't close this page. We'll notify you when processing is complete.</p>
+        <p className="text-primary font-medium whitespace-nowrap">
           <motion.span 
             animate={{ opacity: [1, 0.5, 1] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
             Processing...
           </motion.span>
-      </p>
-    </div>
+        </p>
+      </div>
     </motion.div>
   );
 }

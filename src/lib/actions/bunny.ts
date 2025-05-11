@@ -14,20 +14,45 @@ export async function getPresignedSignature(
   videoId: string,
   expiresIn: number
 ) {
-  const data =
-    bunnyVideoLibraryId + bunnyStreamKey + expiresIn.toString() + videoId;
-  return crypto.createHash("sha256").update(data).digest("hex");
+  try {
+    console.log(`Generating signature for videoId: ${videoId}, expires: ${expiresIn}, current time: ${Math.floor(Date.now() / 1000)}`);
+    
+    if (!bunnyVideoLibraryId || !bunnyStreamKey) {
+      console.error("Missing Bunny configuration. LibraryID or StreamKey not set.");
+      throw new Error("Missing Bunny configuration");
+    }
+    
+    if (!videoId) {
+      console.error("Missing videoId for signature generation");
+      throw new Error("Missing videoId");
+    }
+    
+    if (expiresIn <= Math.floor(Date.now() / 1000)) {
+      console.error(`Invalid expiry time: ${expiresIn} is not in the future. Current time: ${Math.floor(Date.now() / 1000)}`);
+      // Force expiry to be in the future if it's not
+      expiresIn = Math.floor(Date.now() / 1000) + 7200;
+      console.log(`Corrected expiry time to: ${expiresIn}`);
+    }
+
+    const data =
+      bunnyVideoLibraryId + bunnyStreamKey + expiresIn.toString() + videoId;
+    const signature = crypto.createHash("sha256").update(data).digest("hex");
+    
+    console.log(`Signature generated successfully for videoId: ${videoId}`);
+    return signature;
+  } catch (error) {
+    console.error("Error generating signature:", error);
+    throw error;
+  }
 }
 
 export async function createVideo(title: string) {
   try {
-    const uniqueTitle = `${title}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    
     const res = await fetch(
       `${bunnyStreamUrl}/library/${bunnyVideoLibraryId}/videos`,
       {
         method: "POST",
-        body: JSON.stringify({ title: uniqueTitle }),
+        body: JSON.stringify({ title }),
         headers: {
           accept: "application/json",
           "content-type": "application/json",

@@ -74,19 +74,14 @@ export default function FileSelectStep() {
         return;
       }
 
-      // For mobile devices, warn about large files with clearer messaging
+      // For mobile devices, warn about large files
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        // More aggressive warning for larger files on mobile
-        if (file.size > 100 * 1024 * 1024) { // 100MB
-          toast({
-            variant: isMobile && file.size > 300 * 1024 * 1024 ? "destructive" : "default",
-            title: "Large file on mobile device",
-            description: file.size > 300 * 1024 * 1024 
-              ? "Files over 300MB may fail on mobile. Consider using a desktop device."
-              : "Large files may be difficult to upload on mobile connections. Please use WiFi.",
-          });
-        }
+      if (isMobile && file.size > 500 * 1024 * 1024) { // 500MB
+        toast({
+          variant: "default",
+          title: "Large file on mobile",
+          description: "Large files may be difficult to upload on mobile connections. Consider using WiFi.",
+        });
       }
 
       // Set the file
@@ -164,19 +159,6 @@ export default function FileSelectStep() {
   const handleStartUpload = async () => {
     try {
       setIsUploading(true);
-      
-      // Check if on mobile and give additional warning for large files
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile && videoFile && videoFile.size > 300 * 1024 * 1024) {
-        toast({
-          variant: "default",
-          title: "Large file upload on mobile",
-          description: "For best results with large files, please ensure you're on a stable WiFi connection.",
-        });
-        
-        // Add a small delay to ensure the user sees the warning
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
       
       // Show a toast to indicate upload is starting
       toast({

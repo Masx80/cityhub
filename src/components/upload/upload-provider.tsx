@@ -17,9 +17,7 @@ import {
 import { createVideoRecord, updateVideoRecord, getVideoStatus } from "@/lib/actions/stream";
 import { base64ToFile } from "@/lib/utils/video";
 import { nanoid } from "nanoid";
-
-// Import VideoStatus type
-type VideoStatus = "UPLOADING" | "PROCESSING" | "PUBLIC" | "FAILED";
+import { getReliableTimestamp } from "@/lib/utils/time";
 
 // Upload steps
 export type UploadStep =
@@ -164,36 +162,11 @@ export default function UploadProvider({
   const getVideoId = async (title: string) => {
     if (videoDetails.videoId) return videoDetails.videoId;
 
-    // Add retry mechanism for creating videos
-    let attempts = 0;
-    const maxAttempts = 3;
-    
-    while (attempts < maxAttempts) {
-      try {
-        attempts++;
-        const result = await createVideo(title);
-        if (!result.data) {
-          if (attempts >= maxAttempts) {
-            throw new Error(result.message);
-          }
-          // Wait before retrying
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          continue;
-        }
-        
-        updateVideoDetails("videoId", result.data.guid);
-        return result.data.guid;
-      } catch (error) {
-        console.error(`Video creation attempt ${attempts} failed:`, error);
-        if (attempts >= maxAttempts) {
-          throw error;
-        }
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-    
-    throw new Error("Failed to create video after multiple attempts");
+    const result = await createVideo(title);
+    if (!result.data) throw new Error(result.message);
+
+    updateVideoDetails("videoId", result.data.guid);
+    return result.data.guid;
   };
 
   // Upload thumbnail to Bunny
@@ -300,50 +273,26 @@ export default function UploadProvider({
         }
       }
 
-      // Check if video record already exists before creating a new one
-      try {
-        // Try to get the existing video status first
-        const existingVideo = await getVideoStatus(videoId);
-        
-        // If video exists but is in FAILED state, update it instead of creating new
-        if (existingVideo && existingVideo.status === "FAILED") {
-          await updateVideoRecord({
-            videoId,
-            title,
-            userId,
-            status: "UPLOADING" // Use UPLOADING as the status for a retry
-          });
-          console.log("Updated existing failed video record");
-        }
-      } catch (error) {
-        // Video doesn't exist, create a new record
-        const createResult = await createVideoRecord({
-          videoId,
-          title,
-          userId,
-        });
+      // Create initial video record with thumbnail if available
+      const createResult = await createVideoRecord({
+        videoId,
+        title,
+        userId,
+      });
 
-        if (!createResult.data) {
-          throw new Error("Failed to create video record");
-        }
+      if (!createResult.data) {
+        throw new Error("Failed to create video record");
       }
 
       // Get presigned signature for upload
-      const expiresIn = Math.floor(Date.now() / 1000) + 3600;
+      const timestamp = await getReliableTimestamp();
+      const expiresIn = timestamp + 10800; // 3 hours
       const signature = await getPresignedSignature(videoId, expiresIn);
-
-      // Detect if user is on mobile
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      // Use smaller chunks for mobile devices
-      const chunkSize = isMobile ? 1 * 1024 * 1024 : 5 * 1024 * 1024; // 1MB for mobile, 5MB for desktop
 
       const upload = new tus.Upload(videoFile, {
         endpoint: process.env.NEXT_PUBLIC_BUNNY_TUS_ENDPOINT!,
-        retryDelays: [0, 1000, 3000, 5000, 10000, 20000], // More frequent retries
-        chunkSize: chunkSize,
-        storeFingerprintForResuming: true, // Ensure fingerprints are stored for resuming
-        removeFingerprintOnSuccess: false, // Keep fingerprints even after success for potential retries
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        chunkSize: 5 * 1024 * 1024, // 5MB chunks for better mobile handling
         headers: {
           AuthorizationSignature: signature,
           AuthorizationExpire: expiresIn.toString(),
@@ -358,6 +307,28 @@ export default function UploadProvider({
         },
         onError: (error) => {
           console.error("Upload failed:", error);
+          
+          // Enhanced error logging with more details
+          let errorMessage = "There was a problem uploading your video. Please try again.";
+          
+          if (error && error.message) {
+            console.error("Error details:", error.message);
+            
+            // Extract more specific error information
+            if (error.message.includes("Invalid expiry time")) {
+              errorMessage = "Time synchronization error. We'll try again automatically.";
+              // Force retry with corrected server time
+              setUploadError(error);
+              setTimeout(() => {
+                console.log("Automatically retrying upload after time error");
+                retryUpload();
+              }, 1500);
+              return; // Don't update status to failed yet as we're auto-retrying
+            } else if (error.message.includes("network")) {
+              errorMessage = "Network error. Please check your connection and try again.";
+            }
+          }
+          
           setIsUploading(false);
           setUploadError(error);
           setUploadProgress(0);
@@ -375,9 +346,7 @@ export default function UploadProvider({
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: isMobile 
-              ? "Upload failed on mobile. Please try using WiFi or a desktop device."
-              : "There was a problem uploading your video. Please try again.",
+            description: errorMessage,
           });
         },
         onProgress: (bytesUploaded, bytesTotal) => {
@@ -423,9 +392,8 @@ export default function UploadProvider({
       // Store the upload reference
       uploadRef.current = upload;
 
-      // Check for previous uploads with better error handling
-      try {
-        const previousUploads = await upload.findPreviousUploads();
+      // Check for previous uploads
+      upload.findPreviousUploads().then((previousUploads) => {
         if (previousUploads.length) {
           upload.resumeFromPreviousUpload(previousUploads[0]);
           toast({
@@ -434,9 +402,9 @@ export default function UploadProvider({
           });
         }
         
-        // Start the upload with proper error handling
+        // Wrap the start in a try/catch for better error handling on mobile
         try {
-          await upload.start();
+          upload.start();
         } catch (error) {
           console.error("Error starting upload:", error);
           setIsUploading(false);
@@ -445,17 +413,15 @@ export default function UploadProvider({
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: isMobile 
-              ? "Failed to start upload on mobile. Try using WiFi or a desktop device."
-              : "Failed to start upload. Please try again.",
+            description: "Failed to start upload. Please try again.",
           });
         }
-      } catch (error) {
+      }).catch(error => {
         console.error("Error finding previous uploads:", error);
         
-        // Try to start upload anyway with better error handling
+        // Try to start upload anyway
         try {
-          await upload.start();
+          upload.start();
         } catch (startError) {
           console.error("Error starting upload after findPreviousUploads failed:", startError);
           setIsUploading(false);
@@ -464,12 +430,10 @@ export default function UploadProvider({
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: isMobile 
-              ? "Upload failed on mobile. Please try using WiFi or a desktop device." 
-              : "Failed to start upload. Please try again.",
+            description: "Failed to start upload. Please try again.",
           });
         }
-      }
+      });
 
       // Update current step
       setCurrentStep("upload");

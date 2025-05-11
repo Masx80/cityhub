@@ -12,12 +12,10 @@ import {
   getPresignedSignature,
   uploadVideoThumbnail,
 } from "@/lib/actions/bunny";
-import { createVideoRecord, getVideoStatus, updateVideoRecord } from "@/lib/actions/stream";
+import { createVideoRecord } from "@/lib/actions/stream";
 import type { UploadState } from "@/lib/types/upload";
 import ThumbnailSelector from "./thumbnail-selector";
-
-// Import VideoStatus type
-type VideoStatus = "UPLOADING" | "PROCESSING" | "PUBLIC" | "FAILED";
+import { getReliableTimestamp } from "@/lib/utils/time";
 
 interface VideoPreviewProps {
   state: UploadState;
@@ -173,23 +171,19 @@ export default function VideoPreview({
       setUploadError(false);
       setState((prev: UploadState) => ({ ...prev, loading: true }));
 
-      const expiresIn = Math.floor(Date.now() / 1000) + 3600;
+      // Get reliable timestamp
+      const timestamp = await getReliableTimestamp();
+      
+      // Set expiry time with extra buffer
+      const expiresIn = timestamp + 10800; // 3 hours
+      
       const title = state.title.trim().length > 0 ? state.title : "Untitled";
       const videoId = await getVideoId(title);
       const signature = await getPresignedSignature(videoId, expiresIn);
 
-      // Detect if user is on mobile
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      // Use smaller chunks for mobile devices
-      const chunkSize = isMobile ? 1 * 1024 * 1024 : 5 * 1024 * 1024; // 1MB for mobile, 5MB for desktop
-
       const upload = new tus.Upload(state.videoFile, {
         endpoint: process.env.NEXT_PUBLIC_BUNNY_TUS_ENDPOINT!,
-        retryDelays: [0, 1000, 3000, 5000, 10000, 20000], // More frequent retries
-        chunkSize: chunkSize,
-        storeFingerprintForResuming: true, // Ensure fingerprints are stored for resuming
-        removeFingerprintOnSuccess: false, // Keep fingerprints even after success for potential retries
+        retryDelays: [0, 3000, 5000, 10000, 20000],
         headers: {
           AuthorizationSignature: signature,
           AuthorizationExpire: expiresIn.toString(),
@@ -204,18 +198,37 @@ export default function VideoPreview({
         },
         onError: (error) => {
           console.error("Upload failed:", error);
+          
+          // Enhanced error logging with more details
+          let errorMessage = "Failed to upload video. Please try again.";
+          
+          if (error && error.message) {
+            console.error("Error details:", error.message);
+            
+            // Extract more specific error information
+            if (error.message.includes("Invalid expiry time")) {
+              errorMessage = "Time synchronization error. Please try again.";
+              // Force retry with corrected server time
+              setTimeout(() => {
+                uploadInitiatedRef.current = false;
+                handleRetryUpload();
+              }, 1000);
+            } else if (error.message.includes("network")) {
+              errorMessage = "Network error. Please check your connection and try again.";
+            }
+          }
+          
           setState((prev: UploadState) => ({ ...prev, loading: false }));
           setIsUploading(false);
           setVideoUploaded(false);
           setVideoUploadedState(false);
           setUploadError(true);
           uploadInitiatedRef.current = false;
+          
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: isMobile 
-              ? "Upload failed on mobile. Please try using WiFi or a desktop device."
-              : "Failed to upload video. Please try again.",
+            description: errorMessage,
           });
         },
         onProgress: (bytesUploaded, bytesTotal) => {
@@ -237,29 +250,12 @@ export default function VideoPreview({
             setVideoUploadedState(true);
             setState((prev: UploadState) => ({ ...prev, loading: false }));
             
-            // Check if video record already exists before creating a new one
-            try {
-              // Try to get the existing video status first
-              const existingVideo = await getVideoStatus(videoId);
-              
-              // If video exists but is in FAILED state, update it
-              if (existingVideo && existingVideo.status === "FAILED") {
-                await updateVideoRecord({
-                  videoId,
-                  title,
-                  userId,
-                  status: "PUBLIC" // Set to public since this is the final step in this component
-                });
-                console.log("Updated existing failed video record");
-              }
-            } catch (error) {
-              // Video doesn't exist or error occurred, create a new record
-              await createVideoRecord({
-                videoId,
-                title,
-                userId,
-              });
-            }
+            // Create video record
+            await createVideoRecord({
+              videoId,
+              title,
+              userId,
+            });
 
             toast({
               title: "Upload complete",
@@ -281,33 +277,7 @@ export default function VideoPreview({
       });
 
       uploadRef.current = upload;
-
-      // Start upload with better error handling
-      try {
-        const previousUploads = await upload.findPreviousUploads();
-        if (previousUploads.length) {
-          upload.resumeFromPreviousUpload(previousUploads[0]);
-        }
-        
-        await upload.start();
-      } catch (error) {
-        console.error("Error starting upload:", error);
-        setState((prev: UploadState) => ({ ...prev, loading: false }));
-        setIsUploading(false);
-        setUploadStarted(false);
-        setVideoUploaded(false);
-        setVideoUploadedState(false);
-        setUploadError(true);
-        uploadInitiatedRef.current = false;
-        
-        toast({
-          variant: "destructive",
-          title: "Upload failed",
-          description: isMobile 
-            ? "Upload failed on mobile. Please try using WiFi or a desktop device."
-            : "An error occurred during upload setup.",
-        });
-      }
+      upload.start();
     } catch (error) {
       console.error("Error setting up upload:", error);
       setState((prev: UploadState) => ({ ...prev, loading: false }));
