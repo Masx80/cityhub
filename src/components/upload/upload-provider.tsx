@@ -18,6 +18,9 @@ import { createVideoRecord, updateVideoRecord, getVideoStatus } from "@/lib/acti
 import { base64ToFile } from "@/lib/utils/video";
 import { nanoid } from "nanoid";
 
+// Import VideoStatus type
+type VideoStatus = "UPLOADING" | "PROCESSING" | "PUBLIC" | "FAILED";
+
 // Upload steps
 export type UploadStep =
   | "select"
@@ -161,11 +164,36 @@ export default function UploadProvider({
   const getVideoId = async (title: string) => {
     if (videoDetails.videoId) return videoDetails.videoId;
 
-    const result = await createVideo(title);
-    if (!result.data) throw new Error(result.message);
-
-    updateVideoDetails("videoId", result.data.guid);
-    return result.data.guid;
+    // Add retry mechanism for creating videos
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        const result = await createVideo(title);
+        if (!result.data) {
+          if (attempts >= maxAttempts) {
+            throw new Error(result.message);
+          }
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+        
+        updateVideoDetails("videoId", result.data.guid);
+        return result.data.guid;
+      } catch (error) {
+        console.error(`Video creation attempt ${attempts} failed:`, error);
+        if (attempts >= maxAttempts) {
+          throw error;
+        }
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    throw new Error("Failed to create video after multiple attempts");
   };
 
   // Upload thumbnail to Bunny
@@ -272,15 +300,32 @@ export default function UploadProvider({
         }
       }
 
-      // Create initial video record with thumbnail if available
-      const createResult = await createVideoRecord({
-        videoId,
-        title,
-        userId,
-      });
+      // Check if video record already exists before creating a new one
+      try {
+        // Try to get the existing video status first
+        const existingVideo = await getVideoStatus(videoId);
+        
+        // If video exists but is in FAILED state, update it instead of creating new
+        if (existingVideo && existingVideo.status === "FAILED") {
+          await updateVideoRecord({
+            videoId,
+            title,
+            userId,
+            status: "UPLOADING" // Use UPLOADING as the status for a retry
+          });
+          console.log("Updated existing failed video record");
+        }
+      } catch (error) {
+        // Video doesn't exist, create a new record
+        const createResult = await createVideoRecord({
+          videoId,
+          title,
+          userId,
+        });
 
-      if (!createResult.data) {
-        throw new Error("Failed to create video record");
+        if (!createResult.data) {
+          throw new Error("Failed to create video record");
+        }
       }
 
       // Get presigned signature for upload

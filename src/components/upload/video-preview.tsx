@@ -12,9 +12,12 @@ import {
   getPresignedSignature,
   uploadVideoThumbnail,
 } from "@/lib/actions/bunny";
-import { createVideoRecord } from "@/lib/actions/stream";
+import { createVideoRecord, getVideoStatus, updateVideoRecord } from "@/lib/actions/stream";
 import type { UploadState } from "@/lib/types/upload";
 import ThumbnailSelector from "./thumbnail-selector";
+
+// Import VideoStatus type
+type VideoStatus = "UPLOADING" | "PROCESSING" | "PUBLIC" | "FAILED";
 
 interface VideoPreviewProps {
   state: UploadState;
@@ -234,12 +237,29 @@ export default function VideoPreview({
             setVideoUploadedState(true);
             setState((prev: UploadState) => ({ ...prev, loading: false }));
             
-            // Create video record
-            await createVideoRecord({
-              videoId,
-              title,
-              userId,
-            });
+            // Check if video record already exists before creating a new one
+            try {
+              // Try to get the existing video status first
+              const existingVideo = await getVideoStatus(videoId);
+              
+              // If video exists but is in FAILED state, update it
+              if (existingVideo && existingVideo.status === "FAILED") {
+                await updateVideoRecord({
+                  videoId,
+                  title,
+                  userId,
+                  status: "PUBLIC" // Set to public since this is the final step in this component
+                });
+                console.log("Updated existing failed video record");
+              }
+            } catch (error) {
+              // Video doesn't exist or error occurred, create a new record
+              await createVideoRecord({
+                videoId,
+                title,
+                userId,
+              });
+            }
 
             toast({
               title: "Upload complete",

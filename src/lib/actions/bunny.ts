@@ -21,11 +21,13 @@ export async function getPresignedSignature(
 
 export async function createVideo(title: string) {
   try {
+    const uniqueTitle = `${title}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    
     const res = await fetch(
       `${bunnyStreamUrl}/library/${bunnyVideoLibraryId}/videos`,
       {
         method: "POST",
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title: uniqueTitle }),
         headers: {
           accept: "application/json",
           "content-type": "application/json",
