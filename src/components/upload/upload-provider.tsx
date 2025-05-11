@@ -287,10 +287,18 @@ export default function UploadProvider({
       const expiresIn = Math.floor(Date.now() / 1000) + 3600;
       const signature = await getPresignedSignature(videoId, expiresIn);
 
+      // Detect if user is on mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      // Use smaller chunks for mobile devices
+      const chunkSize = isMobile ? 1 * 1024 * 1024 : 5 * 1024 * 1024; // 1MB for mobile, 5MB for desktop
+
       const upload = new tus.Upload(videoFile, {
         endpoint: process.env.NEXT_PUBLIC_BUNNY_TUS_ENDPOINT!,
-        retryDelays: [0, 3000, 5000, 10000, 20000],
-        chunkSize: 5 * 1024 * 1024, // 5MB chunks for better mobile handling
+        retryDelays: [0, 1000, 3000, 5000, 10000, 20000], // More frequent retries
+        chunkSize: chunkSize,
+        storeFingerprintForResuming: true, // Ensure fingerprints are stored for resuming
+        removeFingerprintOnSuccess: false, // Keep fingerprints even after success for potential retries
         headers: {
           AuthorizationSignature: signature,
           AuthorizationExpire: expiresIn.toString(),
@@ -322,7 +330,9 @@ export default function UploadProvider({
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: "There was a problem uploading your video. Please try again.",
+            description: isMobile 
+              ? "Upload failed on mobile. Please try using WiFi or a desktop device."
+              : "There was a problem uploading your video. Please try again.",
           });
         },
         onProgress: (bytesUploaded, bytesTotal) => {
@@ -368,8 +378,9 @@ export default function UploadProvider({
       // Store the upload reference
       uploadRef.current = upload;
 
-      // Check for previous uploads
-      upload.findPreviousUploads().then((previousUploads) => {
+      // Check for previous uploads with better error handling
+      try {
+        const previousUploads = await upload.findPreviousUploads();
         if (previousUploads.length) {
           upload.resumeFromPreviousUpload(previousUploads[0]);
           toast({
@@ -378,9 +389,9 @@ export default function UploadProvider({
           });
         }
         
-        // Wrap the start in a try/catch for better error handling on mobile
+        // Start the upload with proper error handling
         try {
-          upload.start();
+          await upload.start();
         } catch (error) {
           console.error("Error starting upload:", error);
           setIsUploading(false);
@@ -389,15 +400,17 @@ export default function UploadProvider({
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: "Failed to start upload. Please try again.",
+            description: isMobile 
+              ? "Failed to start upload on mobile. Try using WiFi or a desktop device."
+              : "Failed to start upload. Please try again.",
           });
         }
-      }).catch(error => {
+      } catch (error) {
         console.error("Error finding previous uploads:", error);
         
-        // Try to start upload anyway
+        // Try to start upload anyway with better error handling
         try {
-          upload.start();
+          await upload.start();
         } catch (startError) {
           console.error("Error starting upload after findPreviousUploads failed:", startError);
           setIsUploading(false);
@@ -406,10 +419,12 @@ export default function UploadProvider({
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: "Failed to start upload. Please try again.",
+            description: isMobile 
+              ? "Upload failed on mobile. Please try using WiFi or a desktop device." 
+              : "Failed to start upload. Please try again.",
           });
         }
-      });
+      }
 
       // Update current step
       setCurrentStep("upload");

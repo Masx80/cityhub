@@ -175,9 +175,18 @@ export default function VideoPreview({
       const videoId = await getVideoId(title);
       const signature = await getPresignedSignature(videoId, expiresIn);
 
+      // Detect if user is on mobile
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      // Use smaller chunks for mobile devices
+      const chunkSize = isMobile ? 1 * 1024 * 1024 : 5 * 1024 * 1024; // 1MB for mobile, 5MB for desktop
+
       const upload = new tus.Upload(state.videoFile, {
         endpoint: process.env.NEXT_PUBLIC_BUNNY_TUS_ENDPOINT!,
-        retryDelays: [0, 3000, 5000, 10000, 20000],
+        retryDelays: [0, 1000, 3000, 5000, 10000, 20000], // More frequent retries
+        chunkSize: chunkSize,
+        storeFingerprintForResuming: true, // Ensure fingerprints are stored for resuming
+        removeFingerprintOnSuccess: false, // Keep fingerprints even after success for potential retries
         headers: {
           AuthorizationSignature: signature,
           AuthorizationExpire: expiresIn.toString(),
@@ -201,7 +210,9 @@ export default function VideoPreview({
           toast({
             variant: "destructive",
             title: "Upload failed",
-            description: "Failed to upload video. Please try again.",
+            description: isMobile 
+              ? "Upload failed on mobile. Please try using WiFi or a desktop device."
+              : "Failed to upload video. Please try again.",
           });
         },
         onProgress: (bytesUploaded, bytesTotal) => {
@@ -250,7 +261,33 @@ export default function VideoPreview({
       });
 
       uploadRef.current = upload;
-      upload.start();
+
+      // Start upload with better error handling
+      try {
+        const previousUploads = await upload.findPreviousUploads();
+        if (previousUploads.length) {
+          upload.resumeFromPreviousUpload(previousUploads[0]);
+        }
+        
+        await upload.start();
+      } catch (error) {
+        console.error("Error starting upload:", error);
+        setState((prev: UploadState) => ({ ...prev, loading: false }));
+        setIsUploading(false);
+        setUploadStarted(false);
+        setVideoUploaded(false);
+        setVideoUploadedState(false);
+        setUploadError(true);
+        uploadInitiatedRef.current = false;
+        
+        toast({
+          variant: "destructive",
+          title: "Upload failed",
+          description: isMobile 
+            ? "Upload failed on mobile. Please try using WiFi or a desktop device."
+            : "An error occurred during upload setup.",
+        });
+      }
     } catch (error) {
       console.error("Error setting up upload:", error);
       setState((prev: UploadState) => ({ ...prev, loading: false }));
