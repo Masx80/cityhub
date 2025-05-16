@@ -205,8 +205,21 @@ export default function VirtualizedVideoGrid({
   // Render empty state if no videos and not loading (could be due to error or empty results)
   if (!loading && videos.length === 0) {
     return emptyState || (
-      <div className="col-span-full text-center p-10">
-        No videos found
+      <div className="col-span-full flex items-center justify-center py-6 px-4">
+        <div className="w-full max-w-sm bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-5 shadow-md">
+          <div className="flex flex-col items-center text-center">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-amber-600 flex items-center justify-center mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+              </svg>
+            </div>
+            <h3 className="text-base font-medium mb-1">No videos found</h3>
+            <p className="text-muted-foreground text-sm">
+              Try selecting a different category.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }

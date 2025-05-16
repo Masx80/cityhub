@@ -9,13 +9,11 @@ import {
   Film,
   Users,
   BarChart3,
-  Settings,
   DollarSign,
   Flag,
   MessageSquare,
-  Tags,
-  ShieldAlert,
   Bell,
+  KeyRound,
 } from "lucide-react";
 
 export default function AdminSidebar() {
@@ -27,68 +25,68 @@ export default function AdminSidebar() {
       icon: LayoutDashboard,
       href: "/admin",
       active: pathname === "/admin",
+      implemented: true,
     },
     {
       label: "Content",
       icon: Film,
       href: "/admin/content",
       active: pathname === "/admin/content",
+      implemented: true,
     },
     {
       label: "Users",
       icon: Users,
       href: "/admin/users",
       active: pathname === "/admin/users",
+      implemented: true,
     },
     {
       label: "Analytics",
       icon: BarChart3,
       href: "/admin/analytics",
       active: pathname === "/admin/analytics",
+      implemented: false,
     },
     {
       label: "Monetization",
       icon: DollarSign,
       href: "/admin/monetization",
       active: pathname === "/admin/monetization",
-    },
-    {
-      label: "Categories",
-      icon: Tags,
-      href: "/admin/categories",
-      active: pathname === "/admin/categories",
+      implemented: false,
     },
     {
       label: "Comments",
       icon: MessageSquare,
       href: "/admin/comments",
       active: pathname === "/admin/comments",
+      implemented: false,
     },
     {
       label: "Reports",
       icon: Flag,
       href: "/admin/reports",
       active: pathname === "/admin/reports",
+      implemented: false,
     },
     {
       label: "Notifications",
       icon: Bell,
       href: "/admin/notifications",
       active: pathname === "/admin/notifications",
+      implemented: false,
     },
     {
-      label: "Security",
-      icon: ShieldAlert,
-      href: "/admin/security",
-      active: pathname === "/admin/security",
-    },
-    {
-      label: "Settings",
-      icon: Settings,
-      href: "/admin/settings",
-      active: pathname === "/admin/settings",
+      label: "API Keys",
+      icon: KeyRound,
+      href: "/admin/api-keys",
+      active: pathname === "/admin/api-keys",
+      implemented: false,
     },
   ];
+
+  // Filter only implemented routes or active ones (in case user is on a page being worked on)
+  const availableRoutes = routes.filter(route => route.implemented || route.active);
 
   return (
     <div className="hidden md:flex h-full w-64 flex-col bg-card border-r border-border">
@@ -102,7 +100,7 @@ export default function AdminSidebar() {
       </div>
       <div className="flex-1 overflow-auto py-4">
         <nav className="px-2 space-y-1">
-          {routes.map((route, index) => (
+          {availableRoutes.map((route, index) => (
             <motion.div
               key={route.href}
               initial={{ opacity: 0, x: -20 }}

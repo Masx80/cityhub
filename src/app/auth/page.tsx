@@ -28,22 +28,17 @@ export default function AuthPage() {
     setIsLoading(true);
 
     try {
-      // Check if the user is signing in or signing up
-      const result = await signIn?.authenticateWithRedirect({
+      // Try to sign in with Google
+      await signIn?.authenticateWithRedirect({
         strategy: "oauth_google",
         redirectUrl: "/sso-callback",
         redirectUrlComplete: "/",
       });
-
-      // If the signIn is unsuccessful and the user isn't signed up, initiate sign-up
-      if (!result) {
-        await signUp?.authenticateWithRedirect({
-          strategy: "oauth_google",
-          redirectUrl: "/sso-callback",
-          redirectUrlComplete: "/",
-        });
-      }
+      
+      // Note: The code will not reach here because authenticateWithRedirect
+      // will redirect the user away from this page
     } catch (error) {
+      // This catch block will handle any errors that occur before the redirect
       console.error("Error during authentication:", error);
       setIsLoading(false);
     }

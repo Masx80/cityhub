@@ -15,6 +15,8 @@ import {
   Compass,
   Menu,
   X,
+  User,
+  Settings,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
@@ -200,8 +202,8 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
   ];
 
   const sidebarVariants = {
-    expanded: { width: isMobile ? "16rem" : "12rem" },
-    collapsed: { width: isMobile ? "16rem" : "4rem" },
+    expanded: { width: isMobile ? "100%" : "12rem" },
+    collapsed: { width: isMobile ? "100%" : "4rem" },
   };
 
   const navItemVariants = {
@@ -230,6 +232,203 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
     }
   };
 
+  // Render different sidebar for mobile and desktop
+  if (isMobile) {
+    return (
+      <motion.div
+        className="flex flex-col h-full w-full bg-card/90 backdrop-blur-sm border-r border-border overflow-hidden"
+        initial={{ x: -300 }}
+        animate={{ x: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
+        {/* Mobile Header with App Logo/Brand */}
+        <div className="flex items-center justify-between p-4 border-b border-border/40">
+          <div className="flex items-center space-x-2">
+            <Compass className="h-6 w-6 text-primary" />
+            <span className="font-bold text-lg gradient-text">SexCityHub</span>
+          </div>
+        </div>
+
+        {/* Mobile Navigation Menu */}
+        <div className="flex-1 overflow-auto p-2 pt-3 scrollbar-hide">
+          {/* Main Section */}
+          <div className="mb-5">
+            <div className="flex items-center px-3 mb-2">
+              <h2 className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
+                Main
+              </h2>
+            </div>
+            <div className="space-y-1">
+              {mainRoutes.map((route, index) => (
+                <motion.div
+                  key={route.href}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Link
+                    href={route.href}
+                    className={cn(
+                      "flex items-center p-3 rounded-xl text-sm transition-all",
+                      route.active
+                        ? "bg-gradient-to-r from-orange-500/20 to-amber-500/10 text-foreground font-medium"
+                        : "text-muted-foreground hover:bg-accent/50"
+                    )}
+                    onClick={handleNavClick}
+                  >
+                    <div className={cn(
+                      "flex items-center justify-center h-9 w-9 rounded-full mr-3",
+                      route.active ? "bg-gradient-to-br from-orange-500/30 to-amber-500/20" : "bg-secondary"
+                    )}>
+                      <route.icon
+                        className={cn(
+                          "h-5 w-5",
+                          route.active ? "text-primary" : "text-foreground/70"
+                        )}
+                      />
+                    </div>
+                    <span className="font-medium">{route.label}</span>
+                    {route.active && (
+                      <div className="ml-auto">
+                        <div className="h-2 w-2 rounded-full bg-primary"></div>
+                      </div>
+                    )}
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* Library Section */}
+          <div className="mb-5">
+            <div className="flex items-center px-3 mb-2">
+              <h2 className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
+                Library
+              </h2>
+            </div>
+            <div className="space-y-1">
+              {libraryRoutes.map((route, index) => (
+                <motion.div
+                  key={route.href}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Link
+                    href={route.href}
+                    className={cn(
+                      "flex items-center p-3 rounded-xl text-sm transition-all",
+                      route.active
+                        ? "bg-gradient-to-r from-orange-500/20 to-amber-500/10 text-foreground font-medium"
+                        : "text-muted-foreground hover:bg-accent/50"
+                    )}
+                    onClick={handleNavClick}
+                  >
+                    <div className={cn(
+                      "flex items-center justify-center h-9 w-9 rounded-full mr-3",
+                      route.active ? "bg-gradient-to-br from-orange-500/30 to-amber-500/20" : "bg-secondary"
+                    )}>
+                      <route.icon
+                        className={cn(
+                          "h-5 w-5",
+                          route.active ? "text-primary" : "text-foreground/70"
+                        )}
+                      />
+                    </div>
+                    <span className="font-medium">{route.label}</span>
+                    {route.active && (
+                      <div className="ml-auto">
+                        <div className="h-2 w-2 rounded-full bg-primary"></div>
+                      </div>
+                    )}
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
+          {/* Channels/Subscriptions Section */}
+          <div className="mb-5">
+            <div className="flex items-center px-3 mb-2">
+              <h2 className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
+                {sectionTitle}
+              </h2>
+            </div>
+            <div className="space-y-1">
+              {loading ? (
+                // Show loading skeleton for channels
+                Array(4).fill(0).map((_, i) => (
+                  <div 
+                    key={`skeleton-${i}`}
+                    className="flex items-center p-3 rounded-xl animate-pulse"
+                  >
+                    <div className="h-9 w-9 rounded-full bg-muted mr-3"></div>
+                    <div className="h-4 w-28 bg-muted rounded"></div>
+                  </div>
+                ))
+              ) : channelsToShow.length > 0 ? (
+                channelsToShow.map((item) => {
+                  const handle = item.handle || `@${item.name.toLowerCase().replace(/\s+/g, '-')}`;
+                  const channelPath = `/channel/${handle.replace(/^@/, '')}`;
+                  const isChannelActive = pathname === channelPath;
+                  
+                  return (
+                    <motion.div
+                      key={item.id}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Link
+                        href={channelPath}
+                        className={cn(
+                          "flex items-center p-3 rounded-xl text-sm transition-all",
+                          isChannelActive
+                            ? "bg-gradient-to-r from-orange-500/20 to-amber-500/10 text-foreground font-medium"
+                            : "text-muted-foreground hover:bg-accent/50"
+                        )}
+                        onClick={handleNavClick}
+                      >
+                        <Avatar className={cn(
+                          "h-9 w-9 mr-3",
+                          isChannelActive ? "ring-2 ring-primary/40" : ""
+                        )}>
+                          <AvatarImage 
+                            src={getAvatarSrc(item)} 
+                            alt={item.name} 
+                          />
+                          <AvatarFallback className="uppercase bg-gradient-to-br from-orange-500/20 to-amber-500/20">
+                            {item.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-xs text-muted-foreground truncate max-w-[8rem]">
+                            {handle}
+                            {isActive && isChannelActive && (
+                              <span className="ml-1 text-red-500 font-bold">· LIVE</span>
+                            )}
+                          </p>
+                        </div>
+                        {isChannelActive && (
+                          <div className="ml-auto">
+                            <div className="h-2 w-2 rounded-full bg-primary"></div>
+                          </div>
+                        )}
+                      </Link>
+                    </motion.div>
+                  );
+                })
+              ) : (
+                <div className="p-3 text-sm text-muted-foreground">
+                  {isSignedIn ? "No subscriptions yet" : "No channels available"}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+  
+  // Original desktop sidebar code
   return (
     <motion.div
       className={cn(
@@ -241,26 +440,32 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
       transition={{ duration: 0.1, ease: "easeInOut" }}
     >
       <motion.div
-        className="flex items-center justify-between p-3"
+        className="flex items-center justify-between p-3 border-b border-border/40"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
         {(!isCollapsed || isMobile) && (
-          <motion.span
-            className="text-sm font-bold"
+          <motion.div className="flex items-center space-x-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-          ></motion.span>
+          >
+            {isMobile && (
+              <>
+                <Compass className="h-5 w-5 text-primary" />
+                <span className="font-bold text-sm gradient-text">SexCityHub</span>
+              </>
+            )}
+          </motion.div>
         )}
         {!isMobile && (
-          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="ml-auto">
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleSidebar}
-              className="h-8 w-8"
+              className="h-8 w-8 rounded-full hover:bg-accent"
             >
               {isCollapsed ? (
                 <Menu className="h-4 w-4" />
@@ -277,12 +482,12 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
           <div>
             {(!isCollapsed || isMobile) && (
               <motion.div
-                className="flex items-center px-2 mb-1"
+                className="flex items-center px-3 mb-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.3 }}
               >
-                <h2 className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
+                <h2 className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
                   Main
                 </h2>
               </motion.div>
@@ -298,46 +503,68 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Link
-                    href={route.href}
-                    className={cn(
-                      "relative flex items-center rounded-lg px-2 py-2 text-sm transition-all hover:bg-accent gap-2",
-                      route.active
-                        ? "bg-gradient-to-r from-orange-500/10 to-amber-500/10 text-primary font-medium"
-                        : "text-muted-foreground",
-                      isCollapsed && !isMobile && "justify-center"
-                    )}
-                    onClick={handleNavClick}
-                  >
-                    <motion.div
-                      whileHover={{ rotate: 10 }}
-                      transition={{ duration: 0.2 }}
+                  {isCollapsed && !isMobile ? (
+                    <Link
+                      href={route.href}
+                      className={cn(
+                        "relative flex items-center rounded-lg px-2 py-2 text-sm transition-all hover:bg-accent gap-2",
+                        route.active
+                          ? "bg-gradient-to-r from-orange-500/10 to-amber-500/10 text-primary font-medium"
+                          : "text-muted-foreground",
+                        "justify-center"
+                      )}
+                      onClick={handleNavClick}
                     >
-                      <route.icon
-                        className={cn(
-                          "h-5 w-5",
-                          route.active && "text-primary animate-pulse-glow"
-                        )}
-                      />
-                    </motion.div>
-                    {(!isCollapsed || isMobile) && (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                      >
-                        {route.label}
-                      </motion.span>
-                    )}
-                    {route.active && (!isCollapsed || isMobile) && (
                       <motion.div
-                        className="absolute left-0 w-1 h-5 bg-gradient-to-b from-orange-500 to-amber-500 rounded-r-full"
-                        initial={{ height: 0 }}
-                        animate={{ height: "1.25rem" }}
-                        transition={{ duration: 0.3 }}
-                      />
-                    )}
-                  </Link>
+                        whileHover={{ rotate: 10 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <route.icon
+                          className={cn(
+                            "h-5 w-5",
+                            route.active && "text-primary animate-pulse-glow"
+                          )}
+                        />
+                      </motion.div>
+                      {route.active && (
+                        <motion.div
+                          className="absolute left-0 w-1 h-5 bg-gradient-to-b from-orange-500 to-amber-500 rounded-r-full"
+                          initial={{ height: 0 }}
+                          animate={{ height: "1.25rem" }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      )}
+                    </Link>
+                  ) : (
+                    <Link
+                      href={route.href}
+                      className={cn(
+                        "flex items-center p-3 rounded-xl text-sm transition-all",
+                        route.active
+                          ? "bg-gradient-to-r from-orange-500/20 to-amber-500/10 text-foreground font-medium"
+                          : "text-muted-foreground hover:bg-accent/50"
+                      )}
+                      onClick={handleNavClick}
+                    >
+                      <div className={cn(
+                        "flex items-center justify-center h-8 w-8 rounded-full mr-3",
+                        route.active ? "bg-gradient-to-br from-orange-500/30 to-amber-500/20" : "bg-secondary"
+                      )}>
+                        <route.icon
+                          className={cn(
+                            "h-4 w-4",
+                            route.active ? "text-primary" : "text-foreground/70"
+                          )}
+                        />
+                      </div>
+                      <span className="font-medium">{route.label}</span>
+                      {route.active && (
+                        <div className="ml-auto">
+                          <div className="h-2 w-2 rounded-full bg-primary"></div>
+                        </div>
+                      )}
+                    </Link>
+                  )}
                 </motion.div>
               ))}
             </div>
@@ -356,12 +583,12 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
           <div>
             {(!isCollapsed || isMobile) && (
               <motion.div
-                className="flex items-center px-2 mb-1"
+                className="flex items-center px-3 mb-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
-                <h2 className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
+                <h2 className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
                   Library
                 </h2>
               </motion.div>
@@ -377,46 +604,68 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <Link
-                    href={route.href}
-                    className={cn(
-                      "relative flex items-center rounded-lg px-2 py-2 text-sm transition-all hover:bg-accent gap-2",
-                      route.active
-                        ? "bg-gradient-to-r from-orange-500/10 to-amber-500/10 text-primary font-medium"
-                        : "text-muted-foreground",
-                      isCollapsed && !isMobile && "justify-center"
-                    )}
-                    onClick={handleNavClick}
-                  >
-                    <motion.div
-                      whileHover={{ rotate: 10 }}
-                      transition={{ duration: 0.2 }}
+                  {isCollapsed && !isMobile ? (
+                    <Link
+                      href={route.href}
+                      className={cn(
+                        "relative flex items-center rounded-lg px-2 py-2 text-sm transition-all hover:bg-accent gap-2",
+                        route.active
+                          ? "bg-gradient-to-r from-orange-500/10 to-amber-500/10 text-primary font-medium"
+                          : "text-muted-foreground",
+                        "justify-center"
+                      )}
+                      onClick={handleNavClick}
                     >
-                      <route.icon
-                        className={cn(
-                          "h-5 w-5",
-                          route.active && "text-primary animate-pulse-glow"
-                        )}
-                      />
-                    </motion.div>
-                    {(!isCollapsed || isMobile) && (
-                      <motion.span
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                      >
-                        {route.label}
-                      </motion.span>
-                    )}
-                    {route.active && (!isCollapsed || isMobile) && (
                       <motion.div
-                        className="absolute left-0 w-1 h-5 bg-gradient-to-b from-orange-500 to-amber-500 rounded-r-full"
-                        initial={{ height: 0 }}
-                        animate={{ height: "1.25rem" }}
-                        transition={{ duration: 0.3 }}
-                      />
-                    )}
-                  </Link>
+                        whileHover={{ rotate: 10 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <route.icon
+                          className={cn(
+                            "h-5 w-5",
+                            route.active && "text-primary animate-pulse-glow"
+                          )}
+                        />
+                      </motion.div>
+                      {route.active && (
+                        <motion.div
+                          className="absolute left-0 w-1 h-5 bg-gradient-to-b from-orange-500 to-amber-500 rounded-r-full"
+                          initial={{ height: 0 }}
+                          animate={{ height: "1.25rem" }}
+                          transition={{ duration: 0.3 }}
+                        />
+                      )}
+                    </Link>
+                  ) : (
+                    <Link
+                      href={route.href}
+                      className={cn(
+                        "flex items-center p-3 rounded-xl text-sm transition-all",
+                        route.active
+                          ? "bg-gradient-to-r from-orange-500/20 to-amber-500/10 text-foreground font-medium"
+                          : "text-muted-foreground hover:bg-accent/50"
+                      )}
+                      onClick={handleNavClick}
+                    >
+                      <div className={cn(
+                        "flex items-center justify-center h-8 w-8 rounded-full mr-3",
+                        route.active ? "bg-gradient-to-br from-orange-500/30 to-amber-500/20" : "bg-secondary"
+                      )}>
+                        <route.icon
+                          className={cn(
+                            "h-4 w-4",
+                            route.active ? "text-primary" : "text-foreground/70"
+                          )}
+                        />
+                      </div>
+                      <span className="font-medium">{route.label}</span>
+                      {route.active && (
+                        <div className="ml-auto">
+                          <div className="h-2 w-2 rounded-full bg-primary"></div>
+                        </div>
+                      )}
+                    </Link>
+                  )}
                 </motion.div>
               ))}
             </div>
@@ -435,12 +684,12 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
           <div>
             {(!isCollapsed || isMobile) && (
               <motion.div
-                className="flex items-center px-2 mb-1"
+                className="flex items-center px-3 mb-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7 }}
               >
-                <h2 className="text-xs uppercase font-semibold text-muted-foreground tracking-wider">
+                <h2 className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
                   {sectionTitle}
                 </h2>
               </motion.div>
@@ -452,9 +701,15 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
                   Array(4).fill(0).map((_, i) => (
                     <div 
                       key={`skeleton-${i}`}
-                      className="flex items-center gap-2 rounded-lg px-2 py-2 animate-pulse"
+                      className={cn(
+                        "flex items-center gap-2 animate-pulse",
+                        isCollapsed && !isMobile ? "px-2 py-2" : "p-3 rounded-xl"
+                      )}
                     >
-                      <div className="h-7 w-7 rounded-full bg-muted"></div>
+                      <div className={cn(
+                        "rounded-full bg-muted", 
+                        isCollapsed && !isMobile ? "h-7 w-7" : "h-8 w-8 mr-3"
+                      )}></div>
                       {(!isCollapsed || isMobile) && <div className="h-4 w-24 bg-muted rounded"></div>}
                     </div>
                   ))
@@ -463,14 +718,15 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
                   channelsToShow.map((item) => {
                     const handle = item.handle || `@${item.name.toLowerCase().replace(/\s+/g, '-')}`;
                     const channelPath = `/channel/${handle.replace(/^@/, '')}`;
+                    const isChannelActive = pathname === channelPath;
                     
-                    return (
+                    return isCollapsed && !isMobile ? (
                       <Tooltip key={item.id}>
                         <TooltipTrigger asChild>
                           <Link
                             href={channelPath}
                             className={cn(
-                              "flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-all",
+                              "flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm transition-all",
                               pathname === channelPath ? "bg-accent text-accent-foreground" : "hover:bg-accent/50"
                             )}
                             onClick={handleNavClick}
@@ -484,14 +740,6 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
                                 {item.name.charAt(0)}
                               </AvatarFallback>
                             </Avatar>
-                            {(isCollapsed && !isMobile) ? null : (
-                              <div className="flex-1 text-xs truncate max-w-[7rem]">
-                                {item.name}
-                                {pathname === channelPath && isActive && (
-                                  <span className="ml-1 text-[10px] text-red-500">LIVE</span>
-                                )}
-                              </div>
-                            )}
                           </Link>
                         </TooltipTrigger>
                         <TooltipContent side="right" align="start" className="font-medium">
@@ -503,11 +751,58 @@ export default function Sidebar({ isMobile = false, onNavigate }: SidebarProps) 
                           </div>
                         </TooltipContent>
                       </Tooltip>
+                    ) : (
+                      <motion.div
+                        key={item.id}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Link
+                          href={channelPath}
+                          className={cn(
+                            "flex items-center p-3 rounded-xl text-sm transition-all",
+                            isChannelActive
+                              ? "bg-gradient-to-r from-orange-500/20 to-amber-500/10 text-foreground font-medium"
+                              : "text-muted-foreground hover:bg-accent/50"
+                          )}
+                          onClick={handleNavClick}
+                        >
+                          <Avatar className={cn(
+                            "h-8 w-8 mr-3",
+                            isChannelActive ? "ring-2 ring-primary/40" : ""
+                          )}>
+                            <AvatarImage 
+                              src={getAvatarSrc(item)} 
+                              alt={item.name} 
+                            />
+                            <AvatarFallback className="uppercase bg-gradient-to-br from-orange-500/20 to-amber-500/20">
+                              {item.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <p className="font-medium text-xs">{item.name}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-[7rem]">
+                              {handle}
+                              {isActive && isChannelActive && (
+                                <span className="ml-1 text-red-500 font-bold">· LIVE</span>
+                              )}
+                            </p>
+                          </div>
+                          {isChannelActive && (
+                            <div className="ml-auto">
+                              <div className="h-2 w-2 rounded-full bg-primary"></div>
+                            </div>
+                          )}
+                        </Link>
+                      </motion.div>
                     );
                   })
                 ) : (
                   // No channels or subscriptions found message
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                  <div className={cn(
+                    "text-sm text-muted-foreground",
+                    isCollapsed && !isMobile ? "px-3 py-2" : "p-3"
+                  )}>
                     {isSignedIn ? "No subscriptions yet" : "No channels available"}
                   </div>
                 )}

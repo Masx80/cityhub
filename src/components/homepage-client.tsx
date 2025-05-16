@@ -442,23 +442,40 @@ export default function HomepageClient({
 
   // Custom empty state component for the video grid
   const EmptyVideoState = () => (
-    <div className="col-span-full flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-24 h-24 mb-6 rounded-full bg-gradient-to-br from-orange-400 to-amber-600 flex items-center justify-center text-white">
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="23 7 16 12 23 17 23 7"></polygon>
-          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-        </svg>
+    <div className="col-span-full flex items-center justify-center py-8 px-4">
+      <div className="w-full max-w-sm bg-card/60 backdrop-blur-sm border border-border/50 rounded-xl p-6 shadow-lg transition-all hover:shadow-xl">
+        <div className="flex flex-col items-center text-center">
+          <div className="relative mb-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-amber-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+              </svg>
+            </div>
+            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-background text-xs">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+            </span>
+          </div>
+          
+          <h3 className="text-lg font-medium mb-2">No videos found</h3>
+          <p className="text-muted-foreground text-sm mb-4">
+            We couldn't find any videos matching your criteria. Try selecting a different category.
+          </p>
+          
+          <button 
+            onClick={() => handleCategoryChange("all")} 
+            className="w-full py-2 px-4 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="16"/>
+              <line x1="8" y1="12" x2="16" y2="12"/>
+            </svg>
+            Browse all videos
+          </button>
+        </div>
       </div>
-      <h3 className="text-xl font-bold mb-2">No videos found</h3>
-      <p className="text-muted-foreground text-center max-w-md mb-6">
-        We couldn't find any videos matching your criteria. Try selecting a different category or check back later for new content.
-      </p>
-      <button 
-        onClick={() => handleCategoryChange("all")} 
-        className="px-6 py-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-medium hover:from-orange-600 hover:to-amber-600 transition-colors"
-      >
-        Browse all videos
-      </button>
     </div>
   );
 

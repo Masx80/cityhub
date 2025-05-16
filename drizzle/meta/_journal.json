@@ -8,6 +8,20 @@
       "when": 1745725570617,
       "tag": "0000_dapper_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1747416239682,
+      "tag": "0001_late_maximus",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1747420292654,
+      "tag": "0002_skinny_lionheart",
+      "breakpoints": true
     }
   ]
 }

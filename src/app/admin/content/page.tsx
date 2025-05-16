@@ -8,196 +8,202 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, Edit, Trash2, AlertTriangle, CheckCircle, XCircle } from "lucide-react"
+import { Eye, Edit, Trash2, AlertTriangle, CheckCircle, XCircle, Search, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { getAllVideos, updateVideoStatus } from "@/actions/admin"
+import { toast } from "sonner"
 
 export default function ContentManagement() {
   const [loading, setLoading] = useState(true)
   const [videos, setVideos] = useState<any[]>([])
+  const [meta, setMeta] = useState<any>({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0
+  })
+  const [activeTab, setActiveTab] = useState("all")
+  const [search, setSearch] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const fetchVideos = async (page = 1, searchQuery = search, status = "") => {
+    try {
+      setLoading(true)
+      const result = await getAllVideos(page, 10, searchQuery, status)
+      setVideos(result.videos)
+      setMeta(result.meta)
+      setCurrentPage(page)
+    } catch (error) {
+      console.error("Failed to fetch videos:", error)
+      toast.error("Failed to load videos")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    // Simulate data loading
-    setTimeout(() => {
-      setVideos([
-        {
-          id: "v1",
-          title: "Building a Modern SexCity Hub with Next.js",
-          status: "published",
-          views: "120K",
-          likes: "15K",
-          uploadDate: "2024-04-10",
-          channel: "Dev Insights",
-          category: "Technology",
-          duration: "18:24",
-        },
-        {
-          id: "v2",
-          title: "Advanced React Patterns for 2025",
-          status: "published",
-          views: "45K",
-          likes: "5.2K",
-          uploadDate: "2024-04-11",
-          channel: "React Masters",
-          category: "Technology",
-          duration: "24:15",
-        },
-        {
-          id: "v3",
-          title: "The Future of Web Development",
-          status: "pending",
-          views: "0",
-          likes: "0",
-          uploadDate: "2024-04-12",
-          channel: "TechTalk",
-          category: "Technology",
-          duration: "15:30",
-        },
-        {
-          id: "v4",
-          title: "UI/UX Design Principles for Developers",
-          status: "published",
-          views: "31K",
-          likes: "4.1K",
-          uploadDate: "2024-04-11",
-          channel: "Design Hub",
-          category: "Design",
-          duration: "22:08",
-        },
-        {
-          id: "v5",
-          title: "Mastering TypeScript: Advanced Types",
-          status: "flagged",
-          views: "19K",
-          likes: "2.8K",
-          uploadDate: "2024-04-09",
-          channel: "TypeScript Pro",
-          category: "Technology",
-          duration: "32:45",
-        },
-        {
-          id: "v6",
-          title: "Building Responsive Layouts with Tailwind CSS",
-          status: "published",
-          views: "98K",
-          likes: "12.3K",
-          uploadDate: "2024-04-01",
-          channel: "Tailwind Wizards",
-          category: "Design",
-          duration: "16:20",
-        },
-        {
-          id: "v7",
-          title: "State Management in React: Context API vs Redux",
-          status: "published",
-          views: "76K",
-          likes: "8.9K",
-          uploadDate: "2024-04-05",
-          channel: "React Masters",
-          category: "Technology",
-          duration: "28:12",
-        },
-        {
-          id: "v8",
-          title: "10 VS Code Extensions Every Developer Should Use",
-          status: "published",
-          views: "124K",
-          likes: "18.5K",
-          uploadDate: "2024-04-03",
-          channel: "Dev Tools",
-          category: "Technology",
-          duration: "12:45",
-        },
-        {
-          id: "v9",
-          title: "Understanding JavaScript Promises and Async/Await",
-          status: "published",
-          views: "78K",
-          likes: "9.2K",
-          uploadDate: "2024-04-07",
-          channel: "JS Mastery",
-          category: "Technology",
-          duration: "20:18",
-        },
-        {
-          id: "v10",
-          title: "Building a Design System with Figma and React",
-          status: "pending",
-          views: "0",
-          likes: "0",
-          uploadDate: "2024-04-12",
-          channel: "Design Hub",
-          category: "Design",
-          duration: "35:10",
-        },
-        {
-          id: "v11",
-          title: "Docker for Frontend Developers",
-          status: "published",
-          views: "92K",
-          likes: "11.4K",
-          uploadDate: "2024-04-08",
-          channel: "DevOps Simplified",
-          category: "Technology",
-          duration: "26:30",
-        },
-        {
-          id: "v12",
-          title: "Creating Animations with Framer Motion",
-          status: "flagged",
-          views: "47K",
-          likes: "6.3K",
-          uploadDate: "2024-04-06",
-          channel: "Animation Masters",
-          category: "Design",
-          duration: "19:55",
-        },
-      ])
-      setLoading(false)
-    }, 1000)
+    fetchVideos(1)
   }, [])
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+    
+    let statusFilter = "";
+    if (value === "pending") statusFilter = "PROCESSING";
+    else if (value === "flagged") statusFilter = "FAILED";
+    else if (value === "published") statusFilter = "PUBLISHED";
+    
+    fetchVideos(1, search, statusFilter)
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    fetchVideos(1, search)
+  }
+
+  const handleClearSearch = () => {
+    setSearch("")
+    fetchVideos(1, "")
+  }
+
+  const handlePageChange = (page: number) => {
+    fetchVideos(page, search)
+  }
+
+  const handleUpdateVideoStatus = async (videoId: string, newStatus: string) => {
+    try {
+      await updateVideoStatus(videoId, newStatus)
+      
+      // Refresh the video list
+      const statusFilter = activeTab === "all" ? "" : 
+                          activeTab === "pending" ? "PROCESSING" : 
+                          activeTab === "flagged" ? "FAILED" : "PUBLISHED";
+      
+      fetchVideos(currentPage, search, statusFilter)
+      
+      toast.success(`Video status updated successfully`)
+    } catch (error) {
+      console.error("Failed to update video status:", error)
+      toast.error("Failed to update video status")
+    }
+  }
+
   const videoColumns = [
-    { key: "title", title: "Title" },
+    { 
+      key: "title", 
+      title: "Title",
+      render: (value: string, item: any) => (
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-6 overflow-hidden rounded">
+            {item.thumbnail ? (
+              <img src={item.thumbnail} alt={value} className="object-cover w-full h-full" />
+            ) : (
+              <div className="w-full h-full bg-muted" />
+            )}
+          </div>
+          <div className="font-medium truncate max-w-[200px]">{value}</div>
+        </div>
+      )
+    },
     {
       key: "status",
       title: "Status",
       render: (value: string) => (
         <Badge
-          className={value === "published" ? "bg-green-500" : value === "pending" ? "bg-yellow-500" : "bg-red-500"}
+          className={
+            value === "PUBLISHED" ? "bg-green-500" : 
+            value === "PROCESSING" ? "bg-yellow-500" : 
+            "bg-red-500"
+          }
         >
-          {value}
+          {value.toLowerCase()}
         </Badge>
       ),
     },
-    { key: "views", title: "Views" },
-    { key: "likes", title: "Likes" },
-    { key: "uploadDate", title: "Upload Date" },
-    { key: "channel", title: "Channel" },
-    { key: "category", title: "Category" },
-    { key: "duration", title: "Duration" },
+    { 
+      key: "views", 
+      title: "Views",
+      render: (value: number) => value.toLocaleString()
+    },
+    { 
+      key: "likes", 
+      title: "Likes",
+      render: (value: number) => value.toLocaleString()
+    },
+    { 
+      key: "createdAt", 
+      title: "Upload Date",
+      render: (value: string) => {
+        const date = new Date(value);
+        return date.toLocaleDateString();
+      }
+    },
+    { key: "userName", title: "Channel" },
     {
       key: "actions",
       title: "Actions",
       render: (_: any, item: any) => (
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" className="h-8 w-8">
-            <Eye className="h-4 w-4" />
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-8 w-8"
+            asChild
+          >
+            <a href={`/watch/${item.videoId}`} target="_blank">
+              <Eye className="h-4 w-4" />
+            </a>
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8">
-            <Edit className="h-4 w-4" />
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-8 w-8"
+            asChild
+          >
+            <a href={`/edit-video/${item.videoId}`} target="_blank">
+              <Edit className="h-4 w-4" />
+            </a>
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600">
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {item.status === "PROCESSING" && (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8 text-green-500 hover:text-green-600"
+              onClick={() => handleUpdateVideoStatus(item.id, "PUBLISHED")}
+            >
+              <CheckCircle className="h-4 w-4" />
+            </Button>
+          )}
+          {item.status === "FAILED" && (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8 text-green-500 hover:text-green-600"
+              onClick={() => handleUpdateVideoStatus(item.id, "PUBLISHED")}
+            >
+              <CheckCircle className="h-4 w-4" />
+            </Button>
+          )}
+          {item.status === "PUBLISHED" && (
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-8 w-8 text-red-500 hover:text-red-600"
+              onClick={() => handleUpdateVideoStatus(item.id, "FAILED")}
+            >
+              <XCircle className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       ),
     },
   ]
 
-  const pendingVideos = videos.filter((video) => video.status === "pending")
-  const flaggedVideos = videos.filter((video) => video.status === "flagged")
-  const publishedVideos = videos.filter((video) => video.status === "published")
+  const pendingVideos = videos.filter((video) => video.status === "PROCESSING")
+  const flaggedVideos = videos.filter((video) => video.status === "FAILED")
+  const publishedVideos = videos.filter((video) => video.status === "PUBLISHED")
 
-  if (loading) {
+  if (loading && videos.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-16 h-16 border-4 border-t-orange-500 border-orange-200 rounded-full animate-spin"></div>
@@ -212,14 +218,33 @@ export default function ContentManagement() {
         <p className="text-muted-foreground">Manage all videos on the platform</p>
       </div>
 
-      <div className="flex justify-between">
-        <div className="flex gap-2">
-          <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600">
-            Add New Video
-          </Button>
-          <Button variant="outline">Import Videos</Button>
-        </div>
-        <div className="flex gap-2">
+      <div className="flex flex-col md:flex-row justify-between gap-4">
+        <form onSubmit={handleSearch} className="flex w-full md:w-auto gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search videos..."
+              className="w-full pl-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full"
+                onClick={handleClearSearch}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <Button type="submit">Search</Button>
+        </form>
+        
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline">
             <AlertTriangle className="h-4 w-4 mr-2 text-yellow-500" />
             {pendingVideos.length} Pending
@@ -235,7 +260,7 @@ export default function ContentManagement() {
         </div>
       </div>
 
-      <Tabs defaultValue="all">
+      <Tabs defaultValue="all" onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="all">All Videos</TabsTrigger>
           <TabsTrigger value="pending">Pending</TabsTrigger>
@@ -288,48 +313,50 @@ export default function ContentManagement() {
         </TabsContent>
       </Tabs>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Bulk Actions</CardTitle>
-          <CardDescription>Perform actions on multiple videos at once</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="bulk-action">Action</Label>
-              <Select>
-                <SelectTrigger id="bulk-action">
-                  <SelectValue placeholder="Select action" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="approve">Approve Selected</SelectItem>
-                  <SelectItem value="reject">Reject Selected</SelectItem>
-                  <SelectItem value="feature">Feature Selected</SelectItem>
-                  <SelectItem value="delete">Delete Selected</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* Pagination */}
+      {meta.totalPages > 1 && (
+        <div className="flex justify-center mt-4">
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(1)}
+              disabled={currentPage === 1}
+            >
+              First
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            
+            <div className="flex items-center mx-2">
+              Page {currentPage} of {meta.totalPages}
             </div>
-            <div>
-              <Label htmlFor="bulk-category">Category</Label>
-              <Select>
-                <SelectTrigger id="bulk-category">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="technology">Technology</SelectItem>
-                  <SelectItem value="design">Design</SelectItem>
-                  <SelectItem value="education">Education</SelectItem>
-                  <SelectItem value="entertainment">Entertainment</SelectItem>
-                  <SelectItem value="gaming">Gaming</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-end">
-              <Button className="w-full">Apply</Button>
-            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === meta.totalPages}
+            >
+              Next
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(meta.totalPages)}
+              disabled={currentPage === meta.totalPages}
+            >
+              Last
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   )
 }

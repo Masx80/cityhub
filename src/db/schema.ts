@@ -33,6 +33,7 @@ export const users = pgTable(
     channelCreatedAt: timestamp("channel_created_at"),
     channelHandle: text("channel_handle"),
     hasCompletedOnboarding: boolean("has_completed_onboarding").default(false),
+    isAdmin: boolean("is_admin").default(false),
   },
   (t) => [
     uniqueIndex("clerk_id_idx").on(t.clerkId),

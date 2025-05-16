@@ -3,157 +3,134 @@
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Eye, Edit, Ban } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Eye, Edit, Ban, Search, X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { getAllUsers, updateUserStatus } from "@/actions/admin"
+import { formatDistanceToNow } from "date-fns"
+import { toast } from "sonner"
+
+interface User {
+  id: string;
+  clerkId: string;
+  name: string;
+  email?: string;
+  imageUrl?: string;
+  channelHandle?: string;
+  channelName?: string;
+  status: string;
+  role?: string;
+  createdAt: string;
+  videoCount: number;
+  subscriberCount: number;
+  hasCompletedOnboarding?: boolean;
+  [key: string]: any; // Index signature to allow accessing properties dynamically
+}
+
+interface UserColumn {
+  key: string;
+  title: string;
+  render?: (value: any, user: User) => React.ReactNode;
+}
 
 export default function UserManagement() {
   const [loading, setLoading] = useState(true)
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [meta, setMeta] = useState<any>({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0
+  })
+  const [filter, setFilter] = useState("all")
+  const [search, setSearch] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const fetchUsers = async (page = 1, searchQuery = search) => {
+    try {
+      setLoading(true)
+      const result = await getAllUsers(page, 10, searchQuery)
+      setUsers(result.users)
+      setMeta(result.meta)
+      setCurrentPage(page)
+    } catch (error) {
+      console.error("Failed to fetch users:", error)
+      toast.error("Failed to load users")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    // Simulate data loading
-    setTimeout(() => {
-      setUsers([
-        {
-          id: "u1",
-          name: "Sarah Johnson",
-          email: "sarah.j@example.com",
-          status: "active",
-          joinDate: "2023-10-15",
-          videos: 12,
-          subscribers: "5.2K",
-          role: "creator",
-          lastActive: "2024-04-12",
-        },
-        {
-          id: "u2",
-          name: "Michael Chen",
-          email: "michael.c@example.com",
-          status: "active",
-          joinDate: "2023-11-02",
-          videos: 8,
-          subscribers: "3.7K",
-          role: "creator",
-          lastActive: "2024-04-11",
-        },
-        {
-          id: "u3",
-          name: "Alex Rodriguez",
-          email: "alex.r@example.com",
-          status: "suspended",
-          joinDate: "2023-09-20",
-          videos: 5,
-          subscribers: "1.2K",
-          role: "creator",
-          lastActive: "2024-03-25",
-        },
-        {
-          id: "u4",
-          name: "Emily Wilson",
-          email: "emily.w@example.com",
-          status: "active",
-          joinDate: "2023-12-05",
-          videos: 3,
-          subscribers: "950",
-          role: "creator",
-          lastActive: "2024-04-10",
-        },
-        {
-          id: "u5",
-          name: "David Kim",
-          email: "david.k@example.com",
-          status: "pending",
-          joinDate: "2024-01-10",
-          videos: 0,
-          subscribers: "0",
-          role: "user",
-          lastActive: "2024-04-12",
-        },
-        {
-          id: "u6",
-          name: "Jessica Martinez",
-          email: "jessica.m@example.com",
-          status: "active",
-          joinDate: "2023-08-15",
-          videos: 18,
-          subscribers: "12.5K",
-          role: "creator",
-          lastActive: "2024-04-12",
-        },
-        {
-          id: "u7",
-          name: "Ryan Thompson",
-          email: "ryan.t@example.com",
-          status: "active",
-          joinDate: "2023-07-22",
-          videos: 25,
-          subscribers: "8.3K",
-          role: "creator",
-          lastActive: "2024-04-11",
-        },
-        {
-          id: "u8",
-          name: "Sophia Lee",
-          email: "sophia.l@example.com",
-          status: "suspended",
-          joinDate: "2023-11-30",
-          videos: 7,
-          subscribers: "2.1K",
-          role: "creator",
-          lastActive: "2024-03-15",
-        },
-        {
-          id: "u9",
-          name: "Daniel Brown",
-          email: "daniel.b@example.com",
-          status: "active",
-          joinDate: "2024-02-05",
-          videos: 2,
-          subscribers: "450",
-          role: "user",
-          lastActive: "2024-04-09",
-        },
-        {
-          id: "u10",
-          name: "Olivia Garcia",
-          email: "olivia.g@example.com",
-          status: "pending",
-          joinDate: "2024-04-01",
-          videos: 0,
-          subscribers: "0",
-          role: "user",
-          lastActive: "2024-04-01",
-        },
-      ])
-      setLoading(false)
-    }, 1000)
+    fetchUsers(1)
   }, [])
 
-  const userColumns = [
+  const handleFilterChange = (newFilter: string) => {
+    setFilter(newFilter)
+    // In a real app, we would filter by status on the server
+    // For now, we'll just change the UI state
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    fetchUsers(1, search)
+  }
+
+  const handleClearSearch = () => {
+    setSearch("")
+    fetchUsers(1, "")
+  }
+
+  const handlePageChange = (page: number) => {
+    fetchUsers(page, search)
+  }
+
+  const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
+    try {
+      const isSuspended = currentStatus === "active" ? true : false
+      await updateUserStatus(userId, isSuspended)
+      
+      // Refresh the user list
+      fetchUsers(currentPage, search)
+      
+      toast.success(`User ${isSuspended ? "suspended" : "activated"} successfully`)
+    } catch (error) {
+      console.error("Failed to update user status:", error)
+      toast.error("Failed to update user status")
+    }
+  }
+
+  const userColumns: UserColumn[] = [
     {
       key: "name",
       title: "User",
-      render: (value: string, item: any) => (
+      render: (value: string, item: User) => (
         <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-500 text-white">
-              {value.charAt(0)}
-            </AvatarFallback>
+            {item.imageUrl ? (
+              <AvatarImage src={item.imageUrl} alt={value} />
+            ) : (
+              <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-500 text-white">
+                {value.charAt(0)}
+              </AvatarFallback>
+            )}
           </Avatar>
           <div>
             <div className="font-medium">{value}</div>
-            <div className="text-xs text-muted-foreground">{item.email}</div>
+            <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+              {item.channelHandle ? `@${item.channelHandle}` : 'No handle'}
+            </div>
           </div>
         </div>
       ),
     },
     {
-      key: "role",
-      title: "Role",
+      key: "channelName",
+      title: "Channel",
       render: (value: string) => (
-        <Badge variant="outline" className="capitalize">
-          {value}
-        </Badge>
+        <span className="truncate max-w-[150px] block">
+          {value || 'No channel'}
+        </span>
       ),
     },
     {
@@ -173,22 +150,48 @@ export default function UserManagement() {
         </Badge>
       ),
     },
-    { key: "joinDate", title: "Join Date" },
-    { key: "lastActive", title: "Last Active" },
-    { key: "videos", title: "Videos" },
-    { key: "subscribers", title: "Subscribers" },
+    { 
+      key: "createdAt", 
+      title: "Join Date",
+      render: (value: string) => {
+        const date = new Date(value);
+        return date.toLocaleDateString();
+      }
+    },
+    { 
+      key: "videoCount", 
+      title: "Videos",
+      render: (value: number) => value.toLocaleString()
+    },
+    { 
+      key: "subscriberCount", 
+      title: "Subscribers",
+      render: (value: number) => value.toLocaleString()
+    },
     {
       key: "actions",
       title: "Actions",
-      render: (value: unknown, item: any) => (
+      render: (value: unknown, item: User) => (
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" className="h-8 w-8">
-            <Eye className="h-4 w-4" />
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-8 w-8"
+            asChild
+          >
+            <a href={`/channel/${item.clerkId}`} target="_blank">
+              <Eye className="h-4 w-4" />
+            </a>
           </Button>
           <Button variant="outline" size="icon" className="h-8 w-8">
             <Edit className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className={`h-8 w-8 ${item.status === "active" ? "text-red-500 hover:text-red-600" : "text-green-500 hover:text-green-600"}`}
+            onClick={() => handleToggleUserStatus(item.clerkId, item.status)}
+          >
             <Ban className="h-4 w-4" />
           </Button>
         </div>
@@ -200,7 +203,7 @@ export default function UserManagement() {
   const pendingUsers = users.filter((user) => user.status === "pending")
   const suspendedUsers = users.filter((user) => user.status === "suspended")
 
-  if (loading) {
+  if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="w-16 h-16 border-4 border-t-orange-500 border-orange-200 rounded-full animate-spin"></div>
@@ -215,23 +218,58 @@ export default function UserManagement() {
         <p className="text-muted-foreground">Manage all users on the platform</p>
       </div>
 
-      <div className="flex justify-between">
-        <div className="flex gap-2">
-          <Button className="bg-gradient-to-r from-orange-500 to-amber-500">
-            All Users ({users.length})
+      <div className="flex flex-col md:flex-row justify-between gap-4">
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            className={filter === "all" ? "bg-gradient-to-r from-orange-500 to-amber-500" : "variant-outline"}
+            onClick={() => handleFilterChange("all")}
+          >
+            All Users ({meta.total})
           </Button>
-          <Button variant="outline">
+          <Button 
+            variant={filter === "active" ? "default" : "outline"}
+            onClick={() => handleFilterChange("active")}
+          >
             Active ({activeUsers.length})
           </Button>
-          <Button variant="outline">
+          <Button 
+            variant={filter === "pending" ? "default" : "outline"}
+            onClick={() => handleFilterChange("pending")}
+          >
             Pending ({pendingUsers.length})
           </Button>
-          <Button variant="outline">
+          <Button 
+            variant={filter === "suspended" ? "default" : "outline"}
+            onClick={() => handleFilterChange("suspended")}
+          >
             Suspended ({suspendedUsers.length})
           </Button>
         </div>
         
-        <Button>Add New User</Button>
+        <form onSubmit={handleSearch} className="flex w-full md:w-auto gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search users..."
+              className="w-full pl-8"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {search && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full"
+                onClick={handleClearSearch}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <Button type="submit">Search</Button>
+        </form>
       </div>
 
       <div className="rounded-md border">
@@ -260,6 +298,51 @@ export default function UserManagement() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {meta.totalPages > 1 && (
+        <div className="flex justify-center mt-4">
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(1)}
+              disabled={currentPage === 1}
+            >
+              First
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            
+            <div className="flex items-center mx-2">
+              Page {currentPage} of {meta.totalPages}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === meta.totalPages}
+            >
+              Next
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(meta.totalPages)}
+              disabled={currentPage === meta.totalPages}
+            >
+              Last
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

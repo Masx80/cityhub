@@ -1,24 +1,91 @@
 "use client"
 
 import { useState } from "react"
-import { Bell, Search } from "lucide-react"
+import { Bell, Search, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
+import ThemeToggle from "@/components/theme-toggle"
+import Link from "next/link"
+import { ClerkProvider, useUser } from "@clerk/nextjs"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import ThemeToggle from "@/components/theme-toggle"
-import Link from "next/link"
+import { format } from "date-fns"
 
-export default function AdminHeader() {
+type AdminHeaderProps = {
+  user?: any
+}
+
+type Notification = {
+  id: string;
+  title: string;
+  description: string;
+  time: Date;
+  read: boolean;
+}
+
+export default function AdminHeader({ user }: AdminHeaderProps) {
   const [search, setSearch] = useState("")
+  const [notifications, setNotifications] = useState<Notification[]>([
+    {
+      id: "1",
+      title: "New User Registered",
+      description: "A new user has registered on the platform.",
+      time: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
+      read: false,
+    },
+    {
+      id: "2",
+      title: "Content Reported",
+      description: "A video has been reported for inappropriate content.",
+      time: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+      read: false,
+    },
+    {
+      id: "3",
+      title: "System Update",
+      description: "The platform has been updated to the latest version.",
+      time: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+      read: false,
+    },
+    {
+      id: "4",
+      title: "New Content Uploaded",
+      description: "A creator has uploaded new content that needs approval.",
+      time: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
+      read: false,
+    },
+    {
+      id: "5",
+      title: "Usage Statistics",
+      description: "Weekly usage statistics are now available.",
+      time: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
+      read: false,
+    },
+  ]);
+
+  const unreadCount = notifications.filter(notification => !notification.read).length;
+
+  const markAsRead = (id: string) => {
+    setNotifications(notifications.map(notification => 
+      notification.id === id ? { ...notification, read: true } : notification
+    ));
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(notifications.map(notification => ({ ...notification, read: true })));
+  };
+
+  const removeNotification = (id: string) => {
+    setNotifications(notifications.filter(notification => notification.id !== id));
+  };
 
   return (
     <header className="h-16 border-b border-border flex items-center justify-between px-6">
@@ -52,28 +119,78 @@ export default function AdminHeader() {
       <div className="flex items-center gap-3">
         <ThemeToggle />
 
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-orange-500">
-            5
-          </Badge>
-        </Button>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-500 text-white">A</AvatarFallback>
-              </Avatar>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-orange-500">
+                  {unreadCount}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Admin Account</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel className="flex items-center justify-between">
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={markAllAsRead}
+                  className="h-8 text-xs"
+                >
+                  Mark all as read
+                </Button>
+              )}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <div className="max-h-80 overflow-y-auto">
+              {notifications.length > 0 ? (
+                <DropdownMenuGroup>
+                  {notifications.map((notification) => (
+                    <DropdownMenuItem key={notification.id} className="p-0">
+                      <div 
+                        className={`flex items-start gap-2 w-full p-2 cursor-default ${!notification.read ? "bg-muted/50" : ""}`}
+                        onClick={() => markAsRead(notification.id)}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="font-medium truncate">{notification.title}</p>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-5 w-5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeNotification(notification.id);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{notification.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{format(notification.time, 'MMM d, h:mm a')}</p>
+                        </div>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              ) : (
+                <div className="py-4 text-center text-muted-foreground">
+                  No notifications
+                </div>
+              )}
+            </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link 
+                href="/admin/notifications" 
+                className="w-full justify-center text-center text-sm font-medium cursor-pointer"
+              >
+                View all notifications
+              </Link>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
