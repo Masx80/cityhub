@@ -1,5 +1,37 @@
 import PageTransition from "@/components/page-transition";
 import HomepageClient from "@/components/homepage-client";
+import type { Metadata } from "next";
+import Script from 'next/script';
+
+// Define metadata for SEO
+export const metadata: Metadata = {
+  title: "SexCity Hub - Free Adult Videos and XXX Content",
+  description: "Watch free adult videos on SexCity Hub. Browse our vast collection of high-quality XXX content, featuring the hottest adult performers and categories.",
+  keywords: "adult videos, xxx videos, porn videos, free porn, adult content streaming, sex videos, adult entertainment",
+  openGraph: {
+    title: "SexCity Hub - Free Adult Videos and XXX Content",
+    description: "Watch free adult videos on SexCity Hub. Browse our vast collection of high-quality XXX content.",
+    url: "https://sexcityhub.com",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "SexCity Hub - Adult Videos",
+      }
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SexCity Hub - Free Adult Videos",
+    description: "Watch free adult videos on SexCity Hub. Browse our vast collection of high-quality XXX content.",
+    images: ["/og-image.jpg"],
+  },
+  alternates: {
+    canonical: "https://sexcityhub.com",
+  }
+};
 
 // Define interfaces for the server component to match what HomepageClient expects
 interface Video {
@@ -118,9 +150,39 @@ export default async function Home({
     }
   }
 
+  // Create structured data for website
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "SexCity Hub",
+    "url": "https://sexcityhub.com",
+    "description": "Watch free adult videos on SexCity Hub. Browse our vast collection of high-quality XXX content, featuring the hottest adult performers and categories.",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://sexcityhub.com?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "SexCity Hub",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://sexcityhub.com/main-logo.svg",
+        "width": 600,
+        "height": 60
+      }
+    }
+  };
+
   // Pass all initial data to the client component
   return (
     <PageTransition>
+      {/* Add structured data for SEO */}
+      <Script
+        id="website-structured-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <div className="container px-4 pt-1 pb-2 md:pb-3">
         <HomepageClient 
           initialVideos={initialVideos}

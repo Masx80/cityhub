@@ -20,10 +20,41 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    default: "SexCity Hub",
+    default: "SexCity Hub - Free Adult Videos and XXX Content",
     template: "%s | SexCity Hub",
   },
-  description: "Upload, share, and discover amazing videos",
+  description: "SexCity Hub is a premium adult entertainment platform. Watch, upload and share high-quality adult videos. Discover the best XXX content online with our vast collection.",
+  keywords: "adult videos, xxx videos, porn, adult content, sex videos, free porn, adult entertainment, sex videos online",
+  applicationName: "SexCity Hub",
+  metadataBase: new URL("https://sexcityhub.com"),
+  alternates: {
+    canonical: "https://sexcityhub.com",
+  },
+  verification: {
+    google: "GERu76_vgE0H7_B8F48rrLB979IGTNNbV9kh81A77fs"
+  },
+  openGraph: {
+    title: "SexCity Hub - Premium Adult Entertainment Platform",
+    description: "Watch, upload and share high-quality adult videos. Discover the best XXX content online with our vast collection.",
+    url: "https://sexcityhub.com",
+    siteName: "SexCity Hub",
+    type: "website",
+    locale: "en_US",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "SexCity Hub",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SexCity Hub - Premium Adult Entertainment",
+    description: "Watch, upload and share high-quality adult videos. Discover the best XXX content online.",
+    images: ["/og-image.jpg"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -33,7 +64,16 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
     apple: "/main-logo.svg",
   },
-  generator: "v0.dev",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
+  generator: "Next.js",
+  category: "adult entertainment",
 };
 
 export const viewport: Viewport = {

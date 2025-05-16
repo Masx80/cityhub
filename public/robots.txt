@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin-access/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /settings/
+Disallow: /edit-video/
+Disallow: /onboarding/
+Disallow: /notifications/
+
+Sitemap: https://sexcityhub.com/sitemap.xml 

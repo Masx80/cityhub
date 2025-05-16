@@ -15,6 +15,7 @@ import { eq, desc, sql } from "drizzle-orm";
 import { formatVideoForDisplay } from "@/lib/bunny-stream";
 import { baseUrl } from "@/config";
 import { Metadata } from "next";
+import Script from 'next/script';
 import {
   bunnyStreamUrl,
   bunnyVideoLibraryId,
@@ -68,13 +69,35 @@ export async function generateMetadata({ params }: { params: Promise<{ videoId: 
   
   return {
     title: `${video.title} | SexCity Hub`,
-    description: video.description,
+    description: video.description || `Watch ${video.title} on SexCity Hub`,
+    keywords: `adult video, ${video.category?.name || 'xxx'}, ${video.dbData?.video.tags?.join(', ') || ''}`,
     openGraph: {
       title: video.title,
-      description: video.description,
-      type: 'website', // Valid OpenGraph type
-      images: [{ url: video.thumbnail || "/images/default-thumbnail.jpg" }],
+      description: video.description || `Watch ${video.title} on SexCity Hub`,
+      type: 'video.other', 
+      url: `https://sexcityhub.com/watch/${videoId}`,
+      videos: [
+        {
+          url: `https://sexcityhub.com/watch/${videoId}`,
+          type: 'video/mp4',
+        }
+      ],
+      images: [{ 
+        url: video.thumbnail || "/images/default-thumbnail.jpg",
+        width: 1280,
+        height: 720,
+        alt: video.title,
+      }],
     },
+    twitter: {
+      card: 'summary_large_image',
+      title: video.title,
+      description: video.description || `Watch ${video.title} on SexCity Hub`,
+      images: [video.thumbnail || "/images/default-thumbnail.jpg"],
+    },
+    alternates: {
+      canonical: `https://sexcityhub.com/watch/${videoId}`,
+    }
   };
 }
 
@@ -362,8 +385,48 @@ export default async function WatchPage({ params }: { params: Promise<{ videoId:
     console.error("Failed to increment view count:", error);
   }
 
+  // Create structured data for video
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    'name': video.title,
+    'description': video.description || `Watch ${video.title} on SexCity Hub`,
+    'thumbnailUrl': video.thumbnail || "/images/default-thumbnail.jpg",
+    'uploadDate': video.dbData?.video.createdAt ? new Date(video.dbData.video.createdAt).toISOString() : new Date().toISOString(),
+    'duration': video.length ? `PT${Math.floor(video.length / 60)}M${video.length % 60}S` : 'PT0M0S',
+    'contentUrl': `https://sexcityhub.com/watch/${videoId}`,
+    'embedUrl': `https://sexcityhub.com/watch/${videoId}`,
+    'interactionStatistic': {
+      '@type': 'InteractionCounter',
+      'interactionType': 'https://schema.org/WatchAction',
+      'userInteractionCount': video.views || 0
+    },
+    'author': {
+      '@type': 'Person',
+      'name': video.channel?.name || video.dbData?.user.name || 'Unknown User',
+      'url': `https://sexcityhub.com/channel/${video.channel?.handle || video.dbData?.user.channelHandle || video.dbData?.user.id || 'unknown'}`
+    },
+    'publisher': {
+      '@type': 'Organization',
+      'name': 'SexCity Hub',
+      'logo': {
+        '@type': 'ImageObject',
+        'url': 'https://sexcityhub.com/main-logo.svg',
+        'width': 600,
+        'height': 60
+      }
+    }
+  };
+
   return (
     <PageTransition>
+      {/* Add structured data for SEO */}
+      <Script
+        id="video-structured-data"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
+      
       <div className="w-full max-w-none bg-background pb-24">
         {/* Main content area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 lg:gap-6 lg:mx-6 xl:grid-cols-4">
