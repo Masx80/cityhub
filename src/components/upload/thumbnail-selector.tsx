@@ -6,29 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Upload, LoaderCircle, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
-// Ensure URLs are properly formatted
-function ensureValidImageUrl(url: string): string {
-  if (!url) return '';
-  
-  // If it already has https://, it should be ok
-  if (url.startsWith('https://') || url.startsWith('http://')) {
-    // But check for the common mistake where domain and path are joined without a slash
-    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
-    if (domainMatch) {
-      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
-    }
-    return url;
-  }
-  
-  // If it starts with a slash, it's a local file
-  if (url.startsWith('/')) {
-    return url;
-  }
-  
-  // Otherwise, add the domain
-  return `https://sexcityhub.b-cdn.net/${url}`;
-}
-
 interface ThumbnailSelectorProps {
   thumbnails: string[];
   selectedThumbnail?: string;
@@ -118,7 +95,7 @@ export default function ThumbnailSelector({
             }`}
           >
             <img
-              src={ensureValidImageUrl(thumbnail)}
+              src={thumbnail}
               alt={`Thumbnail ${index + 1}`}
               className="w-full h-full object-cover"
             />

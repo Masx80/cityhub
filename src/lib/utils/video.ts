@@ -45,6 +45,10 @@ export const generateThumbnails = (
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
+        // Enable image smoothing for better quality
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
+
         // Draw the video frame on the canvas
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 

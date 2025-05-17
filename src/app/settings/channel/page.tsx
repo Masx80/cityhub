@@ -399,7 +399,7 @@ export default function ChannelSettingsPage() {
   // Reset avatar to original
   const resetAvatar = () => {
     setAvatarFile(null);
-    setAvatarPreview(originalData.channelAvatarUrl ? ensureValidImageUrl(originalData.channelAvatarUrl) : null);
+    setAvatarPreview(originalData.channelAvatarUrl ? originalData.channelAvatarUrl : null);
   };
   
   // Reset banner to original
@@ -684,7 +684,7 @@ export default function ChannelSettingsPage() {
             {bannerPreview ? (
               <>
                 <Image
-                  src={bannerPreview ? ensureValidImageUrl(bannerPreview) : undefined}
+                  src={bannerPreview ? bannerPreview : undefined}
                   alt="Banner preview"
                   fill
                   className="object-cover"
@@ -753,7 +753,7 @@ export default function ChannelSettingsPage() {
               {avatarPreview ? (
                 <>
                   <Image
-                    src={avatarPreview ? ensureValidImageUrl(avatarPreview) : undefined}
+                    src={avatarPreview ? avatarPreview : undefined}
                     alt="Avatar preview"
                     fill
                     className="object-cover"
