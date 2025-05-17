@@ -988,4 +988,200 @@ export async function globalSearch(query: string, limit: number = 8) {
       categories: [],
     };
   }
+}
+
+export async function getAdminNotifications(page: number = 1, limit: number = 10, unreadOnly: boolean = false) {
+  try {
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
+    
+    // Build where condition
+    const whereCondition = unreadOnly 
+      ? and(eq(notifications.type, "admin"), eq(notifications.read, false))
+      : eq(notifications.type, "admin");
+    
+    // Get notifications from the database
+    const adminNotifications = await db
+      .select({
+        id: notifications.id,
+        type: notifications.type,
+        recipientId: notifications.recipientId,
+        actorId: notifications.actorId,
+        content: notifications.content,
+        read: notifications.read,
+        createdAt: notifications.createdAt,
+        videoId: notifications.videoId,
+        commentId: notifications.commentId,
+      })
+      .from(notifications)
+      .where(whereCondition)
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    // Get total count for pagination
+    const totalResult = await db
+      .select({ count: count() })
+      .from(notifications)
+      .where(eq(notifications.type, "admin"))
+      .then(result => result[0].count);
+    
+    // Get unread count
+    const unreadResult = await db
+      .select({ count: count() })
+      .from(notifications)
+      .where(and(
+        eq(notifications.type, "admin"),
+        eq(notifications.read, false)
+      ))
+      .then(result => result[0].count);
+    
+    // Get user and video details
+    const enrichedNotifications = await Promise.all(
+      adminNotifications.map(async (notification) => {
+        // Get actor details if available
+        let actor = null;
+        if (notification.actorId) {
+          const actorResult = await db
+            .select({
+              id: users.id,
+              clerkId: users.clerkId,
+              name: users.name,
+              imageUrl: users.imageUrl,
+              channelName: users.channelName,
+              channelHandle: users.channelHandle,
+            })
+            .from(users)
+            .where(eq(users.clerkId, notification.actorId))
+            .limit(1);
+          
+          if (actorResult.length > 0) {
+            actor = actorResult[0];
+          }
+        }
+        
+        // Get video details if available
+        let video = null;
+        if (notification.videoId) {
+          const videoResult = await db
+            .select({
+              id: videos.id,
+              videoId: videos.videoId,
+              title: videos.title,
+              thumbnail: videos.thumbnail,
+            })
+            .from(videos)
+            .where(eq(videos.id, notification.videoId))
+            .limit(1);
+          
+          if (videoResult.length > 0) {
+            video = videoResult[0];
+          }
+        }
+        
+        return {
+          ...notification,
+          actor,
+          video,
+        };
+      })
+    );
+    
+    return {
+      notifications: enrichedNotifications,
+      pagination: {
+        total: Number(totalResult),
+        unreadCount: Number(unreadResult),
+        pages: Math.ceil(Number(totalResult) / limit),
+        page,
+        limit,
+      }
+    };
+  } catch (error) {
+    console.error("Error fetching admin notifications:", error);
+    return {
+      notifications: [],
+      pagination: {
+        total: 0,
+        unreadCount: 0,
+        pages: 0,
+        page,
+        limit,
+      }
+    };
+  }
+}
+
+export async function markAdminNotificationAsRead(notificationId?: string) {
+  try {
+    if (notificationId) {
+      // Mark a specific notification as read
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(and(
+          eq(notifications.id, notificationId),
+          eq(notifications.type, "admin")
+        ));
+    } else {
+      // Mark all admin notifications as read
+      await db
+        .update(notifications)
+        .set({ read: true })
+        .where(eq(notifications.type, "admin"));
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error marking admin notifications as read:", error);
+    throw new Error("Failed to mark notifications as read");
+  }
+}
+
+export async function createAdminNotification(data: {
+  content: string;
+  actorId?: string;
+  videoId?: string;
+  commentId?: string;
+}) {
+  try {
+    const [newNotification] = await db
+      .insert(notifications)
+      .values({
+        type: "admin",
+        recipientId: "admin", // Special recipient ID for admin notifications
+        actorId: data.actorId || null,
+        content: data.content,
+        videoId: data.videoId || null,
+        commentId: data.commentId || null,
+        read: false,
+      })
+      .returning();
+    
+    return newNotification;
+  } catch (error) {
+    console.error("Error creating admin notification:", error);
+    throw new Error("Failed to create admin notification");
+  }
+}
+
+export async function deleteAdminNotification(notificationId: string) {
+  try {
+    const [deletedNotification] = await db
+      .delete(notifications)
+      .where(and(
+        eq(notifications.id, notificationId),
+        eq(notifications.type, "admin")
+      ))
+      .returning();
+    
+    if (!deletedNotification) {
+      throw new Error("Notification not found");
+    }
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting admin notification:", error);
+    throw new Error("Failed to delete notification");
+  }
 } 

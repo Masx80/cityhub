@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Bell, Search, X, User, Film, Tag, LayoutDashboard } from "lucide-react"
+import { Bell, Search, X, User, Film, Tag, LayoutDashboard, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import ThemeToggle from "@/components/theme-toggle"
 import Link from "next/link"
-import { globalSearch } from "@/actions/admin"
+import { globalSearch, getAdminNotifications, markAdminNotificationAsRead, deleteAdminNotification } from "@/actions/admin"
 import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -19,19 +19,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { format } from "date-fns"
+import { formatDistanceToNow, format } from "date-fns"
+import { toast } from "sonner"
 
 type AdminHeaderProps = {
   user?: any
 }
 
-type Notification = {
+type AdminNotification = {
   id: string;
-  title: string;
-  description: string;
-  time: Date;
+  type: string;
+  content: string;
+  createdAt: string;
   read: boolean;
-}
+  actor?: {
+    id: string;
+    clerkId: string;
+    name: string;
+    imageUrl: string;
+    channelName: string;
+    channelHandle: string;
+  } | null;
+  video?: {
+    id: string;
+    videoId: string;
+    title: string;
+    thumbnail: string;
+  } | null;
+};
 
 type SearchResult = {
   users: any[];
@@ -47,45 +62,28 @@ export default function AdminHeader({ user }: AdminHeaderProps) {
   const [showResults, setShowResults] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: "1",
-      title: "New User Registered",
-      description: "A new user has registered on the platform.",
-      time: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
-      read: false,
-    },
-    {
-      id: "2",
-      title: "Content Reported",
-      description: "A video has been reported for inappropriate content.",
-      time: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-      read: false,
-    },
-    {
-      id: "3",
-      title: "System Update",
-      description: "The platform has been updated to the latest version.",
-      time: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-      read: false,
-    },
-    {
-      id: "4",
-      title: "New Content Uploaded",
-      description: "A creator has uploaded new content that needs approval.",
-      time: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-      read: false,
-    },
-    {
-      id: "5",
-      title: "Usage Statistics",
-      description: "Weekly usage statistics are now available.",
-      time: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-      read: false,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([])
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(true)
+  const [unreadCount, setUnreadCount] = useState(0)
 
-  const unreadCount = notifications.filter(notification => !notification.read).length;
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    try {
+      setIsLoadingNotifications(true)
+      const result = await getAdminNotifications(1, 5)
+      setNotifications(result.notifications)
+      setUnreadCount(result.pagination.unreadCount)
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error)
+    } finally {
+      setIsLoadingNotifications(false)
+    }
+  }
+  
+  // Initial fetch
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
 
   // Handle click outside to close search results
   useEffect(() => {
@@ -133,18 +131,49 @@ export default function AdminHeader({ user }: AdminHeaderProps) {
     }
   }
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(notification => 
-      notification.id === id ? { ...notification, read: true } : notification
-    ));
+  const markAsRead = async (id: string) => {
+    try {
+      await markAdminNotificationAsRead(id)
+      setNotifications(notifications.map(notification => 
+        notification.id === id ? { ...notification, read: true } : notification
+      ))
+      
+      // Update unread count
+      setUnreadCount(prev => Math.max(0, prev - 1))
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error)
+      toast.error("Failed to mark notification as read")
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(notification => ({ ...notification, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      await markAdminNotificationAsRead() // No ID means mark all as read
+      setNotifications(notifications.map(notification => ({ ...notification, read: true })))
+      setUnreadCount(0)
+      toast.success("All notifications marked as read")
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error)
+      toast.error("Failed to mark all notifications as read")
+    }
   };
 
-  const removeNotification = (id: string) => {
-    setNotifications(notifications.filter(notification => notification.id !== id));
+  const removeNotification = async (id: string) => {
+    try {
+      await deleteAdminNotification(id)
+      const updatedNotifications = notifications.filter(notification => notification.id !== id)
+      setNotifications(updatedNotifications)
+      
+      // Update unread count if the removed notification was unread
+      const wasUnread = notifications.find(n => n.id === id)?.read === false
+      if (wasUnread) {
+        setUnreadCount(prev => Math.max(0, prev - 1))
+      }
+      toast.success("Notification removed")
+    } catch (error) {
+      console.error("Failed to delete notification:", error)
+      toast.error("Failed to delete notification")
+    }
   };
   
   const navigateToResult = (type: string, id: string) => {
@@ -388,7 +417,12 @@ export default function AdminHeader({ user }: AdminHeaderProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <div className="max-h-80 overflow-y-auto">
-              {notifications.length > 0 ? (
+              {isLoadingNotifications ? (
+                <div className="py-4 text-center">
+                  <div className="inline-block h-5 w-5 border-2 border-t-orange-500 border-orange-200 rounded-full animate-spin"></div>
+                  <p className="text-sm mt-2">Loading notifications...</p>
+                </div>
+              ) : notifications.length > 0 ? (
                 <DropdownMenuGroup>
                   {notifications.map((notification) => (
                     <DropdownMenuItem key={notification.id} className="p-0">
@@ -397,8 +431,28 @@ export default function AdminHeader({ user }: AdminHeaderProps) {
                         onClick={() => markAsRead(notification.id)}
                       >
                         <div className="flex-1 min-w-0">
+                          {notification.actor ? (
+                            <div className="flex items-center gap-2 mb-1">
+                              <Avatar className="h-6 w-6">
+                                {notification.actor.imageUrl ? (
+                                  <AvatarImage src={notification.actor.imageUrl} alt={notification.actor.name} />
+                                ) : (
+                                  <AvatarFallback>{notification.actor.name.charAt(0)}</AvatarFallback>
+                                )}
+                              </Avatar>
+                              <span className="text-xs font-medium">{notification.actor.name}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 mb-1">
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback>S</AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs font-medium">System</span>
+                            </div>
+                          )}
+                          
                           <div className="flex items-center justify-between">
-                            <p className="font-medium truncate">{notification.title}</p>
+                            <p className="font-medium truncate">{notification.content}</p>
                             <Button 
                               variant="ghost" 
                               size="icon" 
@@ -411,8 +465,26 @@ export default function AdminHeader({ user }: AdminHeaderProps) {
                               <X className="h-3 w-3" />
                             </Button>
                           </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2">{notification.description}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{format(notification.time, 'MMM d, h:mm a')}</p>
+                          
+                          {notification.video && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <div className="w-8 h-5 overflow-hidden rounded bg-muted">
+                                {notification.video.thumbnail ? (
+                                  <img src={notification.video.thumbnail} alt="" className="object-cover w-full h-full" />
+                                ) : (
+                                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                                    <Film className="h-3 w-3 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">{notification.video.title}</p>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}</span>
+                          </div>
                         </div>
                       </div>
                     </DropdownMenuItem>

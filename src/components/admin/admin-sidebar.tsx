@@ -74,7 +74,7 @@ export default function AdminSidebar() {
       icon: Bell,
       href: "/admin/notifications",
       active: pathname === "/admin/notifications",
-      implemented: false,
+      implemented: true,
     },
     {
       label: "API Keys",
