@@ -26,19 +26,51 @@ type AdminHeaderProps = {
   user?: any
 }
 
-type AdminNotification = {
+// Explicitly define notification response type to match what comes from the server
+type ServerNotification = {
   id: string;
   type: string;
+  recipientId: string;
+  actorId: string | null;
   content: string;
-  createdAt: string;
   read: boolean;
+  createdAt: Date;
+  videoId: string | null;
+  commentId: string | null;
+  actor: {
+    id: string;
+    clerkId: string;
+    name: string;
+    imageUrl: string;
+    channelName: string | null;
+    channelHandle: string | null;
+  } | null;
+  video: {
+    id: string;
+    videoId: string;
+    title: string;
+    thumbnail: string;
+  } | null;
+}
+
+// Define client-side notification type with string createdAt
+interface AdminNotification {
+  id: string;
+  type: string;
+  recipientId: string;
+  actorId: string | null;
+  content: string;
+  read: boolean;
+  createdAt: string;
+  videoId: string | null;
+  commentId: string | null;
   actor?: {
     id: string;
     clerkId: string;
     name: string;
     imageUrl: string;
-    channelName: string;
-    channelHandle: string;
+    channelName: string | null;
+    channelHandle: string | null;
   } | null;
   video?: {
     id: string;
@@ -46,7 +78,7 @@ type AdminNotification = {
     title: string;
     thumbnail: string;
   } | null;
-};
+}
 
 type SearchResult = {
   users: any[];
@@ -71,7 +103,16 @@ export default function AdminHeader({ user }: AdminHeaderProps) {
     try {
       setIsLoadingNotifications(true)
       const result = await getAdminNotifications(1, 5)
-      setNotifications(result.notifications)
+      
+      // Convert server notification to client notification format
+      const processedNotifications: AdminNotification[] = result.notifications.map(notification => ({
+        ...notification,
+        createdAt: notification.createdAt instanceof Date 
+          ? notification.createdAt.toISOString() 
+          : String(notification.createdAt)
+      }))
+      
+      setNotifications(processedNotifications)
       setUnreadCount(result.pagination.unreadCount)
     } catch (error) {
       console.error("Failed to fetch notifications:", error)
