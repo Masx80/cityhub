@@ -889,4 +889,103 @@ export async function deleteUser(clerkId: string) {
     console.error("Error deleting user:", error);
     throw new Error("Failed to delete user");
   }
+}
+
+export async function globalSearch(query: string, limit: number = 8) {
+  if (!query || query.trim() === '') {
+    return {
+      users: [],
+      videos: [],
+      categories: [],
+    };
+  }
+  
+  try {
+    const trimmedQuery = query.trim();
+    const likeQuery = `%${trimmedQuery}%`;
+    
+    // Search users - simplify to just search by name to avoid type issues
+    const userResults = await db
+      .select({
+        id: users.id,
+        clerkId: users.clerkId,
+        name: users.name,
+        imageUrl: users.imageUrl,
+        channelName: users.channelName,
+        channelHandle: users.channelHandle,
+        type: sql<string>`'user'`,
+      })
+      .from(users)
+      .where(like(users.name, likeQuery))
+      .limit(limit);
+      
+    // Search videos
+    const videoResults = await db
+      .select({
+        id: videos.id,
+        videoId: videos.videoId,
+        title: videos.title,
+        thumbnail: videos.thumbnail,
+        userId: videos.userId,
+        status: videos.status,
+        type: sql<string>`'video'`,
+      })
+      .from(videos)
+      .where(
+        or(
+          like(videos.title, likeQuery),
+          like(sql`COALESCE(${videos.description}, '')`, likeQuery)
+        )
+      )
+      .limit(limit);
+      
+    // Get user info for videos
+    const videoWithUsers = await Promise.all(
+      videoResults.map(async (video) => {
+        const userInfo = await db
+          .select({
+            name: users.name,
+          })
+          .from(users)
+          .where(eq(users.clerkId, video.userId))
+          .limit(1)
+          .then(result => result[0]);
+        
+        return {
+          ...video,
+          userName: userInfo?.name || 'Unknown User',
+        };
+      })
+    );
+    
+    // Search categories
+    const categoryResults = await db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        description: categories.description,
+        type: sql<string>`'category'`,
+      })
+      .from(categories)
+      .where(
+        or(
+          like(categories.name, likeQuery),
+          like(sql`COALESCE(${categories.description}, '')`, likeQuery)
+        )
+      )
+      .limit(limit);
+    
+    return {
+      users: userResults,
+      videos: videoWithUsers,
+      categories: categoryResults,
+    };
+  } catch (error) {
+    console.error("Error in global search:", error);
+    return {
+      users: [],
+      videos: [],
+      categories: [],
+    };
+  }
 } 
