@@ -1,29 +1,25 @@
-import { Suspense } from "react";
-import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, Share2, Flag, Clock } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import PageTransition from "@/components/page-transition";
-import CustomVideoPlayer from "@/components/custom-video-player";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import CommentsSection from "@/components/comments/comments-section";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Suspense } from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import Script from "next/script";
+import CommentsSection from "@/components/comments/comments-section";
+import ClientVideoActions from "./components/client-video-actions";
+import CustomVideoPlayer from "@/components/custom-video-player";
+import PageTransition from "@/components/page-transition";
+import { baseUrl } from "@/config";
+import { ensureValidImageUrl } from "@/lib/utils/image";
 import { db } from "@/db";
 import { videos, users, categories, subscriptions } from "@/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { formatVideoForDisplay } from "@/lib/bunny-stream";
-import { baseUrl } from "@/config";
-import { Metadata } from "next";
-import Script from 'next/script';
 import {
   bunnyStreamUrl,
   bunnyVideoLibraryId,
   bunnyStreamKey
 } from "@/config";
-
-// Client components for interactive features
-import ClientVideoActions from "./components/client-video-actions";
 
 // Define the generateStaticParams function for SSG
 export async function generateStaticParams() {
@@ -157,7 +153,7 @@ async function getVideoData(videoId: string) {
     let viewsFromBunny = 0;
     let lengthFromBunny = 0;
     try {
-      const bunnyVideoUrl = `${bunnyStreamUrl}/library/${bunnyVideoLibraryId}/videos/${item.video.videoId}`;
+      const bunnyVideoUrl = `${baseUrl}/library/${bunnyVideoLibraryId}/videos/${item.video.videoId}`;
       const bunnyResponse = await fetch(bunnyVideoUrl, {
         headers: {
           'AccessKey': bunnyStreamKey,
@@ -467,7 +463,7 @@ export default async function WatchPage({ params }: { params: Promise<{ videoId:
                   >
                     <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
                       {video.channel?.avatar ? (
-                        <AvatarImage src={video.channel.avatar} alt={video.channel.name} />
+                        <AvatarImage src={ensureValidImageUrl(video.channel.avatar)} alt={video.channel.name} />
                       ) : (
                         <AvatarFallback className="bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200">
                           {(video.channel?.name || 'U').charAt(0)}

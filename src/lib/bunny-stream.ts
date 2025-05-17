@@ -1,4 +1,5 @@
 // Bunny Stream client for fetching video data
+import { ensureValidImageUrl } from "@/lib/utils/image";
 
 // Environment variables for Bunny Stream CDN
 const BUNNY_PULL_ZONE_URL = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_URL || 'vz-7503b6d0-a19.b-cdn.net';
@@ -137,13 +138,9 @@ export function formatVideoForDisplay(video: any, userData: any) {
     channel: {
       name: userData?.channelName || 'Unknown Channel',
       avatar: userData?.channelAvatarUrl 
-        ? (userData.channelAvatarUrl.startsWith('https://') 
-            ? userData.channelAvatarUrl 
-            : `https://sexcityhub.b-cdn.net/${userData.channelAvatarUrl}`)
+        ? ensureValidImageUrl(userData.channelAvatarUrl)
         : userData?.imageUrl
-          ? (userData.imageUrl.startsWith('https://') 
-              ? userData.imageUrl 
-              : `https://sexcityhub.b-cdn.net/${userData.imageUrl}`)
+          ? ensureValidImageUrl(userData.imageUrl)
           : "/avatars/default.jpg",
       handle: userData?.channelHandle?.replace(/^@/, '') || 'unknown',
       subscribers: userData?.subscriberCount || 0

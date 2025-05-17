@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
+import { ensureValidImageUrl } from "@/lib/utils/image";
 
 interface Video {
   id: string;
@@ -154,7 +155,7 @@ export default function MockVideoGrid() {
               onClick={(e) => handleChannelClick(e, video.channel)}
             >
               <Avatar className="h-9 w-9">
-                <AvatarImage src={video.channel.avatar} alt={video.channel.name} />
+                <AvatarImage src={ensureValidImageUrl(video.channel.avatar)} alt={video.channel.name} />
                 <AvatarFallback>{video.channel.name.slice(0, 2)}</AvatarFallback>
               </Avatar>
             </div>

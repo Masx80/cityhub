@@ -2,6 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { formatDistance } from "date-fns";
+import { Play } from "lucide-react";
+import { ensureValidImageUrl } from "@/lib/utils/image";
 
 interface VideoCardProps {
   id: string;
@@ -62,7 +65,7 @@ export default function VideoCard({
       <div className="flex gap-2 mt-2">
         <Link href={`/channel/${channel.handle || id}`} className="flex-shrink-0">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={channel.avatar} alt={channel.name} />
+            <AvatarImage src={ensureValidImageUrl(channel.avatar)} alt={channel.name} />
             <AvatarFallback>
               {channel.name.charAt(0).toUpperCase()}
             </AvatarFallback>
