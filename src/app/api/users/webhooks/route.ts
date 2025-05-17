@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   }
 
   const wh = new Webhook(SIGNING_SECRET);
-  const headerPayload = await headers(); // Await the headers function
+  const headerPayload = await headers();
 
   const svix_id = headerPayload.get("svix-id");
   const svix_timestamp = headerPayload.get("svix-timestamp");
@@ -43,37 +43,64 @@ export async function POST(req: Request) {
   const { id } = evt.data;
   const eventType = evt.type;
 
-  console.log(`Received webhook with ID ${id} and event type of ${eventType}`);
+  console.log(`Processing ${eventType} for user ID: ${id}, Payload:`, JSON.stringify(evt.data, null, 2));
 
   if (eventType === "user.created") {
     const data = evt.data;
-    if (data.id) {
-      await db.insert(users).values({
-        clerkId: data.id,
-        name: `${data.first_name} ${data.last_name}`,
-        imageUrl: data.image_url,
-      });
+    if (data.id && data.first_name) {
+      try {
+        await db.insert(users).values({
+          clerkId: data.id,
+          name: `${data.first_name}${data.last_name ? ` ${data.last_name}` : ''}`,
+          imageUrl: data.image_url || null,
+        });
+      } catch (err) {
+        console.error("Database error in user.created:", err);
+        return new Response("Database error", { status: 500 });
+      }
+    } else {
+      console.error("Missing required fields in user.created payload");
+      return new Response("Missing required fields", { status: 400 });
     }
   }
 
   if (eventType === "user.deleted") {
     const data = evt.data;
     if (data.id) {
-      await db.delete(users).where(eq(users.clerkId, data.id));
+      try {
+        const result = await db.delete(users).where(eq(users.clerkId, data.id));
+        if (result.rowCount === 0) {
+          console.warn(`User ${data.id} not found for deletion`);
+        }
+      } catch (err) {
+        console.error("Database error in user.deleted:", err);
+        return new Response("Database error", { status: 500 });
+      }
     }
   }
 
   if (eventType === "user.updated") {
     const data = evt.data;
-    if (data.id) {
-      await db
-        .update(users)
-        .set({
-          name: `${data.first_name} ${data.last_name}`,
-          imageUrl: data.image_url,
-        })
-        .where(eq(users.clerkId, data.id));
+    if (data.id && data.first_name) {
+      try {
+        await db
+          .update(users)
+          .set({
+            name: `${data.first_name}${data.last_name ? ` ${data.last_name}` : ''}`,
+            imageUrl: data.image_url || null,
+          })
+          .where(eq(users.clerkId, data.id));
+      } catch (err) {
+        console.error("Database error in user.updated:", err);
+        return new Response("Database error", { status: 500 });
+      }
+    } else {
+      console.error("Missing required fields in user.updated payload");
+      return new Response("Missing required fields", { status: 400 });
     }
+  } else {
+    console.log(`Unhandled event type: ${eventType}`);
+    return new Response(`Unhandled event type: ${eventType}`, { status: 200 });
   }
 
   return new Response("Webhook received", { status: 200 });
