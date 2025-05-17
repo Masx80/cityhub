@@ -35,29 +35,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
-
-// Ensure URLs are properly formatted
-function ensureValidImageUrl(url: string): string {
-  if (!url) return '';
-  
-  // If it already has https://, it should be ok
-  if (url.startsWith('https://') || url.startsWith('http://')) {
-    // But check for the common mistake where domain and path are joined without a slash
-    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
-    if (domainMatch) {
-      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
-    }
-    return url;
-  }
-  
-  // If it starts with a slash, it's a local file
-  if (url.startsWith('/')) {
-    return url;
-  }
-  
-  // Otherwise, add the domain
-  return `https://sexcityhub.b-cdn.net/${url}`;
-}
+import { ensureValidImageUrl } from "@/lib/utils/image";
 
 interface VideoDetails {
   id: string;

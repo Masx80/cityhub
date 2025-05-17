@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SubscribeButton from "@/components/subscribe-button";
+import { ensureValidImageUrl } from "@/lib/utils/image";
 
 // Format numbers with K and M for thousands and millions
 function formatNumber(num: number): string {
@@ -18,29 +19,6 @@ function formatNumber(num: number): string {
     return (num / 1000).toFixed(1) + 'K';
   }
   return num.toString();
-}
-
-// Ensure URLs are properly formatted
-function ensureValidImageUrl(url: string): string {
-  if (!url) return '';
-  
-  // If it already has https://, it should be ok
-  if (url.startsWith('https://') || url.startsWith('http://')) {
-    // But check for the common mistake where domain and path are joined without a slash
-    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
-    if (domainMatch) {
-      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
-    }
-    return url;
-  }
-  
-  // If it starts with a slash, it's a local file
-  if (url.startsWith('/')) {
-    return url;
-  }
-  
-  // Otherwise, add the domain
-  return `https://sexcityhub.b-cdn.net/${url}`;
 }
 
 interface ChannelHeaderProps {

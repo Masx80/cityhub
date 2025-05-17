@@ -5,6 +5,7 @@ import { useUpload } from "@/components/upload/upload-provider";
 import { formatBytes, formatTime } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
+import { ensureValidImageUrl } from "@/lib/utils/image";
 
 export default function UploadProgressStep() {
   const {
@@ -21,6 +22,11 @@ export default function UploadProgressStep() {
   } = useUpload();
 
   if (!videoFile) return null;
+
+  // Process the thumbnail using the utility function
+  const thumbnailUrl = videoDetails.selectedThumbnail 
+    ? ensureValidImageUrl(videoDetails.selectedThumbnail)
+    : undefined;
 
   return (
     <motion.div 
@@ -157,7 +163,7 @@ export default function UploadProgressStep() {
                 <video 
                   src={filePreview} 
                   className="w-full h-full object-contain" 
-                  poster={videoDetails.selectedThumbnail}
+                  poster={thumbnailUrl}
                 />
               </div>
             )}

@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { Play, Clock, Eye, Calendar, Edit } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { ensureValidImageUrl } from "@/lib/utils/image";
 
 // Create a global context for tracking the currently previewing video
 import { createContext, useContext } from "react";
@@ -35,29 +36,6 @@ export function PreviewProvider({ children }: { children: React.ReactNode }) {
 // Hook to use the preview context
 export function usePreview() {
   return useContext(PreviewContext);
-}
-
-// Ensure URLs are properly formatted
-function ensureValidImageUrl(url: string): string {
-  if (!url) return '';
-  
-  // If it already has https://, it should be ok
-  if (url.startsWith('https://') || url.startsWith('http://')) {
-    // But check for the common mistake where domain and path are joined without a slash
-    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
-    if (domainMatch) {
-      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
-    }
-    return url;
-  }
-  
-  // If it starts with a slash, it's a local file
-  if (url.startsWith('/')) {
-    return url;
-  }
-  
-  // Otherwise, add the domain
-  return `https://sexcityhub.b-cdn.net/${url}`;
 }
 
 interface VideoCardProps {
