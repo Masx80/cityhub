@@ -30,6 +30,30 @@ import ReactCrop, { type Crop as CropType } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
+// Add this utility function after imports
+// Ensure URLs are properly formatted
+function ensureValidImageUrl(url: string): string {
+  if (!url) return '';
+  
+  // If it already has https://, it should be ok
+  if (url.startsWith('https://') || url.startsWith('http://')) {
+    // But check for the common mistake where domain and path are joined without a slash
+    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
+    if (domainMatch) {
+      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
+    }
+    return url;
+  }
+  
+  // If it starts with a slash, it's a local file
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Otherwise, add the domain
+  return `https://sexcityhub.b-cdn.net/${url}`;
+}
+
 export default function ChannelSettingsPage() {
   const router = useRouter();
   const { user, isLoaded, isSignedIn } = useUser();
@@ -103,11 +127,11 @@ export default function ChannelSettingsPage() {
         
         // Set preview images
         if (channelData.channelAvatarUrl) {
-          setAvatarPreview(channelData.channelAvatarUrl);
+          setAvatarPreview(ensureValidImageUrl(channelData.channelAvatarUrl));
         }
         
         if (channelData.channelBannerUrl) {
-          setBannerPreview(channelData.channelBannerUrl);
+          setBannerPreview(ensureValidImageUrl(channelData.channelBannerUrl));
         }
         
         // Store original data for comparison
@@ -375,19 +399,13 @@ export default function ChannelSettingsPage() {
   // Reset avatar to original
   const resetAvatar = () => {
     setAvatarFile(null);
-    setAvatarPreview(originalData.channelAvatarUrl);
-    if (avatarInputRef.current) {
-      avatarInputRef.current.value = "";
-    }
+    setAvatarPreview(originalData.channelAvatarUrl ? ensureValidImageUrl(originalData.channelAvatarUrl) : null);
   };
   
   // Reset banner to original
   const resetBanner = () => {
     setBannerFile(null);
-    setBannerPreview(originalData.channelBannerUrl);
-    if (bannerInputRef.current) {
-      bannerInputRef.current.value = "";
-    }
+    setBannerPreview(originalData.channelBannerUrl ? ensureValidImageUrl(originalData.channelBannerUrl) : null);
   };
 
   // Delete image from Bunny storage (if it exists)
@@ -666,7 +684,7 @@ export default function ChannelSettingsPage() {
             {bannerPreview ? (
               <>
                 <Image
-                  src={bannerPreview}
+                  src={bannerPreview ? ensureValidImageUrl(bannerPreview) : undefined}
                   alt="Banner preview"
                   fill
                   className="object-cover"
@@ -735,7 +753,7 @@ export default function ChannelSettingsPage() {
               {avatarPreview ? (
                 <>
                   <Image
-                    src={avatarPreview}
+                    src={avatarPreview ? ensureValidImageUrl(avatarPreview) : undefined}
                     alt="Avatar preview"
                     fill
                     className="object-cover"
