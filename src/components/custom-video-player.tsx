@@ -49,7 +49,7 @@ export default function CustomVideoPlayer({ src, poster, title }: BunnyPlayerPro
       <div dangerouslySetInnerHTML={{ 
         __html: `<div style="position:relative;padding-top:56.25%;">
           <iframe 
-            src="https://iframe.mediadelivery.net/embed/426297/9ffb0c1d-bd45-4623-b39d-b93c098a2f0f?autoplay=true&loop=true&muted=true&preload=true&responsive=true" 
+            src="https://iframe.mediadelivery.net/embed/426297/cba7e67d-19cd-4d1a-9e8c-ed92c4e7808e?autoplay=true&loop=true&muted=true&preload=true&responsive=true" 
             loading="lazy" 
             style="border:0;position:absolute;top:0;height:100%;width:100%;" 
             allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture;" 
