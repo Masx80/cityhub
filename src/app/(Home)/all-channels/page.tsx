@@ -36,7 +36,17 @@ export default function AllChannelsPage() {
         }
         
         const data = await response.json();
-        setChannels(data);
+        
+        // Sanitize URLs in the data before setting state
+        const sanitizedData = data.map((channel: Channel) => {
+          return {
+            ...channel,
+            banner: sanitizeUrl(channel.banner),
+            avatar: sanitizeUrl(channel.avatar)
+          };
+        });
+        
+        setChannels(sanitizedData);
       } catch (error) {
         console.error("Error fetching channels:", error);
         setError("Failed to load channels. Please try again later.");
@@ -49,6 +59,27 @@ export default function AllChannelsPage() {
     fetchChannels();
   }, []);
 
+  // URL sanitization function
+  const sanitizeUrl = (url: string | undefined | null): string | null => {
+    if (!url) return null;
+    
+    // Handle specific issue with b-cdn.net domains
+    if (url.includes('b-cdn.net') && !url.includes('b-cdn.net/')) {
+      const match = url.match(/(b-cdn\.net)([^\/].*)/i);
+      if (match) {
+        return url.replace(match[0], `${match[1]}/${match[2]}`);
+      }
+    }
+    
+    try {
+      new URL(url);
+      return url;
+    } catch (e) {
+      console.error("Invalid URL detected:", url);
+      return null;
+    }
+  };
+
   const refreshChannels = async () => {
     setLoading(true);
     setError(null);
@@ -58,7 +89,17 @@ export default function AllChannelsPage() {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
       const data = await response.json();
-      setChannels(data);
+      
+      // Sanitize URLs in the data before setting state
+      const sanitizedData = data.map((channel: Channel) => {
+        return {
+          ...channel,
+          banner: sanitizeUrl(channel.banner),
+          avatar: sanitizeUrl(channel.avatar)
+        };
+      });
+      
+      setChannels(sanitizedData);
       toast.success("Channels refreshed successfully");
     } catch (error) {
       console.error("Error refreshing channels:", error);
@@ -126,13 +167,29 @@ export default function AllChannelsPage() {
 }
 
 function ChannelCard({ channel }: { channel: Channel }) {
-  // Function to handle missing image URLs
+  // Function to handle missing image URLs and fix formatting issues
   const getValidImageUrl = (url: string | undefined | null) => {
     if (!url || url.startsWith('/placeholders/')) {
-      // Return a default gradient background color
       return null;
     }
-    return url;
+    
+    // Special case for specific URL format issue
+    if (url.includes('b-cdn.net') && !url.includes('b-cdn.net/')) {
+      // Look for the pattern where domain and path are joined without a slash
+      const match = url.match(/(b-cdn\.net)([^\/].*)/i);
+      if (match) {
+        return url.replace(match[0], `${match[1]}/${match[2]}`);
+      }
+    }
+    
+    // Ensure the URL is properly formed
+    try {
+      new URL(url);
+      return url;
+    } catch (e) {
+      console.error("Invalid URL format:", url);
+      return null;
+    }
   };
 
   const avatarUrl = getValidImageUrl(channel.avatar);

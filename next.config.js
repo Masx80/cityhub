@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    domains: [
+      'sexcityhub.b-cdn.net',
+      'sexcityhub.b-cdn.netbanner_user_2xdhp0y3uszhrjuvd6nqasmala0_1747479950021.jpg'
+    ],
     remotePatterns: [
       {
         protocol: 'https',
@@ -17,6 +21,14 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'sexcityhub.b-cdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.b-cdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'sexcityhub.b-cdn.netbanner_user_2xdhp0y3uszhrjuvd6nqasmala0_1747479950021.jpg',
       },
       {
         protocol: 'https',
