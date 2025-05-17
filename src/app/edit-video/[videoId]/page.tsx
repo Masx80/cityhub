@@ -36,6 +36,29 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Image from "next/image";
 import { useUser } from "@clerk/nextjs";
 
+// Ensure URLs are properly formatted
+function ensureValidImageUrl(url: string): string {
+  if (!url) return '';
+  
+  // If it already has https://, it should be ok
+  if (url.startsWith('https://') || url.startsWith('http://')) {
+    // But check for the common mistake where domain and path are joined without a slash
+    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
+    if (domainMatch) {
+      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
+    }
+    return url;
+  }
+  
+  // If it starts with a slash, it's a local file
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Otherwise, add the domain
+  return `https://sexcityhub.b-cdn.net/${url}`;
+}
+
 interface VideoDetails {
   id: string;
   title: string;
@@ -401,7 +424,7 @@ export default function EditVideoPage() {
               <div className="aspect-video bg-muted rounded-md overflow-hidden relative mb-4">
                 {videoDetails.thumbnail ? (
                   <Image
-                    src={videoDetails.thumbnail}
+                    src={ensureValidImageUrl(videoDetails.thumbnail)}
                     alt={videoDetails.title}
                     fill
                     className="object-cover"
@@ -423,7 +446,7 @@ export default function EditVideoPage() {
                 <div className="flex items-center gap-2 mt-2">
                   {videoDetails.channel?.avatar ? (
                     <Image
-                      src={videoDetails.channel.avatar}
+                      src={ensureValidImageUrl(videoDetails.channel.avatar)}
                       alt={videoDetails.channel.name}
                       width={24}
                       height={24}

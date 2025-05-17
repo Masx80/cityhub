@@ -37,6 +37,29 @@ export function usePreview() {
   return useContext(PreviewContext);
 }
 
+// Ensure URLs are properly formatted
+function ensureValidImageUrl(url: string): string {
+  if (!url) return '';
+  
+  // If it already has https://, it should be ok
+  if (url.startsWith('https://') || url.startsWith('http://')) {
+    // But check for the common mistake where domain and path are joined without a slash
+    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
+    if (domainMatch) {
+      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
+    }
+    return url;
+  }
+  
+  // If it starts with a slash, it's a local file
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Otherwise, add the domain
+  return `https://sexcityhub.b-cdn.net/${url}`;
+}
+
 interface VideoCardProps {
   id: string;
   title: string;
@@ -95,6 +118,10 @@ export default function VideoCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { currentPreviewId, setCurrentPreviewId } = usePreview();
+  
+  // Ensure image URLs are valid
+  const validatedThumbnail = thumbnail ? ensureValidImageUrl(thumbnail) : '/placeholder.svg';
+  const validatedAvatar = channel.avatar ? ensureValidImageUrl(channel.avatar) : undefined;
   
   // Generate preview URL from Bunny Stream CDN
   const pullZoneUrl = process.env.NEXT_PUBLIC_BUNNY_PULL_ZONE_URL || 'vz-7503b6d0-a19.b-cdn.net';
@@ -263,7 +290,7 @@ export default function VideoCard({
           {/* Base thumbnail image - static, no fade in/out */}
           <div className="absolute inset-0 z-10">
             <Image
-              src={thumbnail || "/placeholder.svg"}
+              src={validatedThumbnail}
               alt={title}
               fill
               className={cn(
@@ -272,7 +299,7 @@ export default function VideoCard({
               )}
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               priority={false}
-              unoptimized={thumbnail?.includes('b-cdn.net')}
+              unoptimized={validatedThumbnail?.includes('b-cdn.net')}
             />
           </div>
           
@@ -319,8 +346,8 @@ export default function VideoCard({
           className="flex-shrink-0 cursor-pointer transform transition-all duration-200 hover:scale-110 mt-0.5"
         >
           <Avatar className="h-9 w-9 rounded-full border border-muted shadow-sm hover:border-primary/50 transition-all">
-            {channel.avatar ? (
-              <AvatarImage src={channel.avatar} alt={channel.name} />
+            {validatedAvatar ? (
+              <AvatarImage src={validatedAvatar} alt={channel.name} />
             ) : (
               <AvatarFallback className="bg-gradient-to-br from-primary to-primary/70 text-white">
                 {channel.name.charAt(0).toUpperCase()}

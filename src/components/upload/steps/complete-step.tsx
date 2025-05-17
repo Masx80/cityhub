@@ -3,7 +3,7 @@ import { CheckCircle2, Copy, Share2, Eye, ArrowRight, Edit, Play, Facebook, Twit
 import { Button } from "@/components/ui/button";
 import { useUpload } from "@/components/upload/upload-provider";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import {
@@ -21,6 +21,29 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+
+// Ensure URLs are properly formatted
+function ensureValidImageUrl(url: string): string {
+  if (!url) return '';
+  
+  // If it already has https://, it should be ok
+  if (url.startsWith('https://') || url.startsWith('http://')) {
+    // But check for the common mistake where domain and path are joined without a slash
+    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
+    if (domainMatch) {
+      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
+    }
+    return url;
+  }
+  
+  // If it starts with a slash, it's a local file
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Otherwise, add the domain
+  return `https://sexcityhub.b-cdn.net/${url}`;
+}
 
 export default function CompleteStep() {
   const { videoDetails } = useUpload();
@@ -95,7 +118,7 @@ export default function CompleteStep() {
             <div className="aspect-video bg-muted rounded-md overflow-hidden relative group border">
               {videoDetails.selectedThumbnail ? (
                 <img 
-                  src={videoDetails.selectedThumbnail} 
+                  src={ensureValidImageUrl(videoDetails.selectedThumbnail)} 
                   alt="Video thumbnail" 
                   className="w-full h-full object-cover"
                 />

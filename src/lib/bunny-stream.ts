@@ -136,7 +136,15 @@ export function formatVideoForDisplay(video: any, userData: any) {
     thumbnail: getVideoThumbnailUrl(video.videoId, video.thumbnail),
     channel: {
       name: userData?.channelName || 'Unknown Channel',
-      avatar: userData?.channelAvatarUrl || userData?.imageUrl,
+      avatar: userData?.channelAvatarUrl 
+        ? (userData.channelAvatarUrl.startsWith('https://') 
+            ? userData.channelAvatarUrl 
+            : `https://sexcityhub.b-cdn.net/${userData.channelAvatarUrl}`)
+        : userData?.imageUrl
+          ? (userData.imageUrl.startsWith('https://') 
+              ? userData.imageUrl 
+              : `https://sexcityhub.b-cdn.net/${userData.imageUrl}`)
+          : "/avatars/default.jpg",
       handle: userData?.channelHandle?.replace(/^@/, '') || 'unknown',
       subscribers: userData?.subscriberCount || 0
     },

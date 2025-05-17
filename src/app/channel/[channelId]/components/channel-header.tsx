@@ -20,6 +20,29 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
+// Ensure URLs are properly formatted
+function ensureValidImageUrl(url: string): string {
+  if (!url) return '';
+  
+  // If it already has https://, it should be ok
+  if (url.startsWith('https://') || url.startsWith('http://')) {
+    // But check for the common mistake where domain and path are joined without a slash
+    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
+    if (domainMatch) {
+      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
+    }
+    return url;
+  }
+  
+  // If it starts with a slash, it's a local file
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Otherwise, add the domain
+  return `https://sexcityhub.b-cdn.net/${url}`;
+}
+
 interface ChannelHeaderProps {
   channel: {
     id: string;
@@ -37,13 +60,16 @@ interface ChannelHeaderProps {
 }
 
 export default function ChannelHeader({ channel }: ChannelHeaderProps) {
+  // Ensure avatar URL is valid
+  const avatarUrl = ensureValidImageUrl(channel.avatar);
+
   return (
     <div>
       <div className="flex flex-col md:flex-row items-start gap-6">
         <div className="relative h-24 w-24 rounded-full overflow-hidden bg-muted flex-shrink-0">
-          {channel.avatar ? (
+          {avatarUrl ? (
             <Image
-              src={channel.avatar}
+              src={avatarUrl}
               alt={channel.name}
               className="object-cover"
               fill

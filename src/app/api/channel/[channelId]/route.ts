@@ -145,8 +145,20 @@ export async function GET(
           handle: channel.channelHandle || `@${channelHandle.replace(/^@/, '')}`,
           description: channel.channelDescription || "No description available",
           location: channel.channelLocation,
-          avatar: channel.channelAvatarUrl || channel.imageUrl,
-          banner: channel.channelBannerUrl,
+          avatar: channel.channelAvatarUrl 
+            ? (channel.channelAvatarUrl.startsWith('https://') 
+                ? channel.channelAvatarUrl 
+                : `https://sexcityhub.b-cdn.net/${channel.channelAvatarUrl}`)
+            : channel.imageUrl
+              ? (channel.imageUrl.startsWith('https://') 
+                  ? channel.imageUrl 
+                  : `https://sexcityhub.b-cdn.net/${channel.imageUrl}`)
+              : "/avatars/default.jpg",
+          banner: channel.channelBannerUrl
+            ? (channel.channelBannerUrl.startsWith('https://') 
+                ? channel.channelBannerUrl 
+                : `https://sexcityhub.b-cdn.net/${channel.channelBannerUrl}`)
+            : null,
           joinDate: channel.channelCreatedAt ? new Intl.DateTimeFormat('en-US', { 
             year: 'numeric', 
             month: 'short', 

@@ -29,6 +29,29 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
+// Ensure URLs are properly formatted
+function ensureValidImageUrl(url: string): string {
+  if (!url) return '';
+  
+  // If it already has https://, it should be ok
+  if (url.startsWith('https://') || url.startsWith('http://')) {
+    // But check for the common mistake where domain and path are joined without a slash
+    const domainMatch = url.match(/https:\/\/sexcityhub\.b-cdn\.net([^\/])/);
+    if (domainMatch) {
+      return url.replace(/sexcityhub\.b-cdn\.net/, 'sexcityhub.b-cdn.net/');
+    }
+    return url;
+  }
+  
+  // If it starts with a slash, it's a local file
+  if (url.startsWith('/')) {
+    return url;
+  }
+  
+  // Otherwise, add the domain
+  return `https://sexcityhub.b-cdn.net/${url}`;
+}
+
 // Define Channel interface
 interface Channel {
   id: string;
@@ -113,7 +136,14 @@ export default async function ChannelPage({ params }: { params: Promise<{ channe
       notFound();
     }
         
-    channel = await response.json();
+    const channelData = await response.json();
+    
+    // Fix image URLs before rendering
+    channel = {
+      ...channelData,
+      avatar: ensureValidImageUrl(channelData.avatar),
+      banner: channelData.banner ? ensureValidImageUrl(channelData.banner) : null
+    };
     
     // Add debug logging for isOwner flag
     console.log(`Channel page for: ${channel.name} (${channelId})`);

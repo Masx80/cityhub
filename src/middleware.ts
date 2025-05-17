@@ -11,7 +11,7 @@ const isProtectedRoute = createRouteMatcher([
   "/watch-later",
   "/settings",
   "/history",
-  "/channel(.*)", // <- notice the (.*) to match subroutes too
+  // "/channel(.*)" has been removed to make it public
   // "/subscriptions(.*)" has been removed to make it public
 ]);
 
