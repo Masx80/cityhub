@@ -4,11 +4,37 @@ import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Eye, Edit, Ban, Search, X } from "lucide-react"
+import { Eye, Edit, Ban, Search, X, Trash, Save } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { getAllUsers, updateUserStatus } from "@/actions/admin"
+import { getAllUsers, updateUserStatus, deleteUser, updateUserRole } from "@/actions/admin"
 import { formatDistanceToNow } from "date-fns"
 import { toast } from "sonner"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface User {
   id: string;
@@ -45,12 +71,34 @@ export default function UserManagement() {
   const [filter, setFilter] = useState("all")
   const [search, setSearch] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
+  
+  // For edit modal
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState<User | null>(null)
+  const [editedRole, setEditedRole] = useState("")
+  
+  // For delete confirmation
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
 
   const fetchUsers = async (page = 1, searchQuery = search) => {
     try {
       setLoading(true)
       const result = await getAllUsers(page, 10, searchQuery)
-      setUsers(result.users)
+      
+      // Ensure all user data conforms to the User interface
+      const typedUsers = result.users.map(user => ({
+        ...user,
+        // Ensure createdAt is a string
+        createdAt: user.createdAt instanceof Date 
+          ? user.createdAt.toISOString() 
+          : String(user.createdAt),
+        // Ensure these are numbers
+        videoCount: Number(user.videoCount || 0),
+        subscriberCount: Number(user.subscriberCount || 0)
+      })) as User[]
+      
+      setUsers(typedUsers)
       setMeta(result.meta)
       setCurrentPage(page)
     } catch (error) {
@@ -97,6 +145,45 @@ export default function UserManagement() {
     } catch (error) {
       console.error("Failed to update user status:", error)
       toast.error("Failed to update user status")
+    }
+  }
+  
+  const handleEditUser = (user: User) => {
+    setCurrentUser(user)
+    setEditedRole(user.role || "user")
+    setIsEditModalOpen(true)
+  }
+  
+  const handleSaveUserEdit = async () => {
+    if (!currentUser) return
+    
+    try {
+      await updateUserRole(currentUser.clerkId, editedRole)
+      toast.success("User role updated successfully")
+      setIsEditModalOpen(false)
+      fetchUsers(currentPage, search)
+    } catch (error) {
+      console.error("Failed to update user role:", error)
+      toast.error("Failed to update user role")
+    }
+  }
+  
+  const confirmDeleteUser = (user: User) => {
+    setUserToDelete(user)
+    setIsDeleteDialogOpen(true)
+  }
+  
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return
+    
+    try {
+      await deleteUser(userToDelete.clerkId)
+      toast.success("User deleted successfully")
+      setIsDeleteDialogOpen(false)
+      fetchUsers(currentPage, search)
+    } catch (error) {
+      console.error("Failed to delete user:", error)
+      toast.error("Failed to delete user")
     }
   }
 
@@ -183,7 +270,12 @@ export default function UserManagement() {
               <Eye className="h-4 w-4" />
             </a>
           </Button>
-          <Button variant="outline" size="icon" className="h-8 w-8">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-8 w-8"
+            onClick={() => handleEditUser(item)}
+          >
             <Edit className="h-4 w-4" />
           </Button>
           <Button 
@@ -194,14 +286,28 @@ export default function UserManagement() {
           >
             <Ban className="h-4 w-4" />
           </Button>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-8 w-8 text-red-500 hover:text-red-600"
+            onClick={() => confirmDeleteUser(item)}
+          >
+            <Trash className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },
   ]
 
-  const activeUsers = users.filter((user) => user.status === "active")
-  const pendingUsers = users.filter((user) => user.status === "pending")
-  const suspendedUsers = users.filter((user) => user.status === "suspended")
+  // Apply filters based on current tab
+  let filteredUsers = users;
+  if (filter === "active") {
+    filteredUsers = users.filter(user => user.status === "active");
+  } else if (filter === "pending") {
+    filteredUsers = users.filter(user => user.status === "pending");
+  } else if (filter === "suspended") {
+    filteredUsers = users.filter(user => user.status === "suspended");
+  }
 
   if (loading && users.length === 0) {
     return (
@@ -230,19 +336,19 @@ export default function UserManagement() {
             variant={filter === "active" ? "default" : "outline"}
             onClick={() => handleFilterChange("active")}
           >
-            Active ({activeUsers.length})
+            Active ({users.filter(u => u.status === "active").length})
           </Button>
           <Button 
             variant={filter === "pending" ? "default" : "outline"}
             onClick={() => handleFilterChange("pending")}
           >
-            Pending ({pendingUsers.length})
+            Pending ({users.filter(u => u.status === "pending").length})
           </Button>
           <Button 
             variant={filter === "suspended" ? "default" : "outline"}
             onClick={() => handleFilterChange("suspended")}
           >
-            Suspended ({suspendedUsers.length})
+            Suspended ({users.filter(u => u.status === "suspended").length})
           </Button>
         </div>
         
@@ -284,7 +390,7 @@ export default function UserManagement() {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {filteredUsers.map((user) => (
               <tr key={user.id} className="border-b">
                 {userColumns.map((column) => (
                   <td key={`${user.id}-${column.key}`} className="p-3">
@@ -343,6 +449,84 @@ export default function UserManagement() {
           </div>
         </div>
       )}
+      
+      {/* Edit User Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update user information and permissions.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {currentUser && (
+            <div className="space-y-4 py-2">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-10 w-10">
+                  {currentUser.imageUrl ? (
+                    <AvatarImage src={currentUser.imageUrl} alt={currentUser.name} />
+                  ) : (
+                    <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                  )}
+                </Avatar>
+                <div>
+                  <h3 className="font-medium">{currentUser.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {currentUser.channelHandle ? `@${currentUser.channelHandle}` : 'No handle'}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="role">User Role</Label>
+                <Select value={editedRole} onValueChange={setEditedRole}>
+                  <SelectTrigger id="role">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="moderator">Moderator</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveUserEdit}>
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete User Confirmation */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user
+              account and all associated data, including videos, comments, and other content.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteUser}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

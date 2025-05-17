@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { 
   users, videos, categories, comments, subscriptions,
-  videoLikes, videoDislikes, notifications, videoHistory 
+  videoLikes, videoDislikes, notifications, videoHistory, watchLater 
 } from "@/db/schema";
 import { eq, sql, desc, asc, and, like, count, or } from "drizzle-orm";
 import { faker } from "@faker-js/faker";
@@ -214,30 +214,87 @@ export async function getAllUsers(
   limit: number = 10,
   search: string = ""
 ) {
-  // Return dummy data for now to get past build issues
-  const users = Array(limit).fill(null).map((_, i) => ({
-    id: `user-${i + (page - 1) * limit}`,
-    clerkId: `clerk-${i + (page - 1) * limit}`,
-    name: `User ${i + (page - 1) * limit}`,
-    imageUrl: "https://example.com/avatar.png",
-    channelName: `Channel ${i + (page - 1) * limit}`,
-    channelHandle: `@user${i + (page - 1) * limit}`,
-    createdAt: new Date().toISOString(),
-    hasCompletedOnboarding: true,
-    videoCount: Math.floor(Math.random() * 50),
-    subscriberCount: Math.floor(Math.random() * 1000),
-    status: "active"
-  }));
-
-  return {
-    users,
-    meta: {
-      total: 100,
-      page,
-      limit,
-      totalPages: Math.ceil(100 / limit),
-    }
-  };
+  try {
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
+    
+    // Build search condition if search query is provided
+    const whereClause = search
+      ? like(users.name, `%${search}%`)
+      : undefined;
+    
+    // Count total users matching the criteria
+    const totalResult = await db
+      .select({ count: count() })
+      .from(users)
+      .where(whereClause)
+      .then(result => result[0].count);
+    
+    // Fetch users with pagination
+    const userResults = await db
+      .select({
+        id: users.id,
+        clerkId: users.clerkId,
+        name: users.name,
+        imageUrl: users.imageUrl,
+        channelName: users.channelName,
+        channelHandle: users.channelHandle,
+        createdAt: users.createdAt,
+        hasCompletedOnboarding: users.hasCompletedOnboarding,
+        isAdmin: users.isAdmin,
+      })
+      .from(users)
+      .where(whereClause)
+      .orderBy(desc(users.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    // Get video and subscriber counts for each user
+    const usersWithStats = await Promise.all(
+      userResults.map(async (user) => {
+        const videoCount = await db
+          .select({ count: count() })
+          .from(videos)
+          .where(eq(videos.userId, user.clerkId))
+          .then(result => result[0].count);
+        
+        const subscriberCount = await db
+          .select({ count: count() })
+          .from(subscriptions)
+          .where(eq(subscriptions.creatorId, user.clerkId))
+          .then(result => result[0].count);
+        
+        return {
+          ...user,
+          videoCount: Number(videoCount),
+          subscriberCount: Number(subscriberCount),
+          status: user.hasCompletedOnboarding ? "active" : "pending"
+        };
+      })
+    );
+    
+    return {
+      users: usersWithStats,
+      meta: {
+        total: Number(totalResult),
+        page,
+        limit,
+        totalPages: Math.ceil(Number(totalResult) / limit),
+      }
+    };
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    // Return empty result in case of error
+    return {
+      users: [],
+      meta: {
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      }
+    };
+  }
 }
 
 export async function getAllVideos(
@@ -246,30 +303,128 @@ export async function getAllVideos(
   search: string = "",
   status: string = ""
 ) {
-  // Return dummy data for now to get past build issues
-  const videos = Array(limit).fill(null).map((_, i) => ({
-    id: `video-${i + (page - 1) * limit}`,
-    videoId: `v-${i + (page - 1) * limit}`,
-    title: `Video ${i + (page - 1) * limit}`,
-    status: status || "PUBLIC",
-    thumbnail: "https://example.com/thumbnail.png",
-    createdAt: new Date().toISOString(),
-    userId: `user-${Math.floor(Math.random() * 10)}`,
-    userName: `User ${Math.floor(Math.random() * 10)}`,
-    userImage: "https://example.com/avatar.png",
-    views: Math.floor(Math.random() * 10000),
-    likes: Math.floor(Math.random() * 500)
-  }));
-
-  return {
-    videos,
-    meta: {
-      total: 100,
-      page,
-      limit,
-      totalPages: Math.ceil(100 / limit),
+  try {
+    // Calculate offset for pagination
+    const offset = (page - 1) * limit;
+    
+    // Build query conditions
+    let whereConditions = [];
+    
+    // Add search condition if search query is provided
+    if (search) {
+      whereConditions.push(like(videos.title, `%${search}%`));
     }
-  };
+    
+    // Add status condition if status is provided
+    if (status) {
+      whereConditions.push(eq(videos.status, status));
+    }
+    
+    // Combine all conditions with AND
+    const whereClause = whereConditions.length > 0
+      ? and(...whereConditions)
+      : undefined;
+    
+    // Count total videos matching the criteria
+    const totalResult = await db
+      .select({ count: count() })
+      .from(videos)
+      .where(whereClause)
+      .then(result => result[0].count);
+    
+    // Fetch videos with pagination
+    const videoResults = await db
+      .select({
+        id: videos.id,
+        videoId: videos.videoId,
+        title: videos.title,
+        status: videos.status,
+        thumbnail: videos.thumbnail,
+        createdAt: videos.createdAt,
+        userId: videos.userId,
+      })
+      .from(videos)
+      .where(whereClause)
+      .orderBy(desc(videos.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    // Get user names for all videos
+    const userIds = [...new Set(videoResults.map(video => video.userId))];
+    
+    const userInfoMap = new Map();
+    
+    // Fetch user information if we have videos
+    if (userIds.length > 0) {
+      const userInfoResults = await db
+        .select({
+          clerkId: users.clerkId,
+          name: users.name,
+          imageUrl: users.imageUrl,
+        })
+        .from(users)
+        .where(
+          sql`${users.clerkId} IN (${sql.join(userIds.map(id => sql`${id}`), sql`, `)})`
+        );
+      
+      // Create a map of userId to user info
+      userInfoResults.forEach(user => {
+        userInfoMap.set(user.clerkId, {
+          name: user.name,
+          imageUrl: user.imageUrl,
+        });
+      });
+    }
+    
+    // Get view and like counts for each video
+    const videosWithDetails = await Promise.all(
+      videoResults.map(async (video) => {
+        const views = await db
+          .select({ count: count() })
+          .from(videoHistory)
+          .where(eq(videoHistory.videoId, video.id))
+          .then(result => result[0].count);
+        
+        const likes = await db
+          .select({ count: count() })
+          .from(videoLikes)
+          .where(eq(videoLikes.videoId, video.id))
+          .then(result => result[0].count);
+        
+        const userInfo = userInfoMap.get(video.userId) || { name: 'Unknown User', imageUrl: '' };
+        
+        return {
+          ...video,
+          userName: userInfo.name,
+          userImage: userInfo.imageUrl,
+          views: Number(views),
+          likes: Number(likes)
+        };
+      })
+    );
+    
+    return {
+      videos: videosWithDetails,
+      meta: {
+        total: Number(totalResult),
+        page,
+        limit,
+        totalPages: Math.ceil(Number(totalResult) / limit),
+      }
+    };
+  } catch (error) {
+    console.error("Error fetching videos:", error);
+    // Return empty result in case of error
+    return {
+      videos: [],
+      meta: {
+        total: 0,
+        page,
+        limit,
+        totalPages: 0,
+      }
+    };
+  }
 }
 
 export async function updateVideoStatus(id: string, status: string) {
@@ -294,13 +449,31 @@ export async function updateUserStatus(clerkId: string, isSuspended: boolean) {
   try {
     // In a real application, you would integrate with Clerk Admin API
     // to suspend/unsuspend the user
-    // For now, we'll just update a field in our database
+    
+    // First check if user exists
+    const userResult = await db
+      .select({
+        id: users.id,
+        hasCompletedOnboarding: users.hasCompletedOnboarding
+      })
+      .from(users)
+      .where(eq(users.clerkId, clerkId))
+      .limit(1);
+    
+    if (userResult.length === 0) {
+      throw new Error("User not found");
+    }
+    
+    // Add a suspended field to track user suspension separately from onboarding
+    // For this demo, we'll temporarily use the same updatedAt field timestamp to indicate suspension
+    // In a real app, you'd add a proper 'suspended' field to the users table
     
     const [updatedUser] = await db
       .update(users)
       .set({
-        // This is a placeholder, you would need to add a suspended field to your schema
-        hasCompletedOnboarding: !isSuspended, // Using this as a proxy for now
+        // Toggle the onboarding status to change active/inactive state
+        // In a real app, you would use a dedicated field for suspension
+        hasCompletedOnboarding: !isSuspended,
         updatedAt: new Date(),
       })
       .where(eq(users.clerkId, clerkId))
@@ -623,5 +796,97 @@ export async function deleteCategory(id: string) {
   } catch (error) {
     console.error("Error deleting category:", error);
     throw new Error("Failed to delete category");
+  }
+}
+
+export async function deleteUser(clerkId: string) {
+  try {
+    // In a real app, you would:
+    // 1. Delete the user from Clerk first using their Admin API
+    // 2. Then perform cascade deletion of all user data
+    
+    // For this implementation, we'll handle the database side:
+    
+    // Start a transaction
+    // In a real app with proper relationships set up, we'd use cascade delete
+    await db.transaction(async (tx) => {
+      // 1. Delete all the user's videos first
+      const userVideos = await tx
+        .select({ id: videos.id })
+        .from(videos)
+        .where(eq(videos.userId, clerkId));
+      
+      for (const video of userVideos) {
+        // Delete video likes
+        await tx
+          .delete(videoLikes)
+          .where(eq(videoLikes.videoId, video.id));
+        
+        // Delete video dislikes
+        await tx
+          .delete(videoDislikes)
+          .where(eq(videoDislikes.videoId, video.id));
+        
+        // Delete video history entries
+        await tx
+          .delete(videoHistory)
+          .where(eq(videoHistory.videoId, video.id));
+        
+        // Delete watch later entries
+        await tx
+          .delete(watchLater)
+          .where(eq(watchLater.videoId, video.id));
+        
+        // Delete comments on this video
+        await tx
+          .delete(comments)
+          .where(eq(comments.videoId, video.id));
+      }
+      
+      // 2. Delete the videos themselves
+      await tx
+        .delete(videos)
+        .where(eq(videos.userId, clerkId));
+      
+      // 3. Delete user's comments on other videos
+      await tx
+        .delete(comments)
+        .where(eq(comments.userId, clerkId));
+      
+      // 4. Delete user's subscriptions to other channels
+      await tx
+        .delete(subscriptions)
+        .where(eq(subscriptions.subscriberId, clerkId));
+      
+      // 5. Delete other users' subscriptions to this user's channel
+      await tx
+        .delete(subscriptions)
+        .where(eq(subscriptions.creatorId, clerkId));
+      
+      // 6. Delete user's notifications
+      await tx
+        .delete(notifications)
+        .where(eq(notifications.recipientId, clerkId));
+      
+      // 7. Delete user's watch history
+      await tx
+        .delete(videoHistory)
+        .where(eq(videoHistory.userId, clerkId));
+      
+      // 8. Finally delete the user record
+      const [deletedUser] = await tx
+        .delete(users)
+        .where(eq(users.clerkId, clerkId))
+        .returning();
+      
+      if (!deletedUser) {
+        throw new Error("User not found");
+      }
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    throw new Error("Failed to delete user");
   }
 } 
